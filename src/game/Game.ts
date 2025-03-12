@@ -1,52 +1,25 @@
 import * as PIXI from 'pixi.js';
 import { Player } from './Player';
+import { AnimatedCharacter } from './AnimatedCharacter';
 import { PC } from './PC';
 import { TileMap } from './TileMap';
 import tileset from '@assets/tilesets/overworld.png';
 import { DebugOverlay } from './DebugOverlay';
 
-// Types
-interface Point {
-    x: number;
-    y: number;
-}
+interface Point { x: number; y: number; }
+interface Bounds { x: number; y: number; width: number; height: number; }
+interface CollisionBox { points: Point[]; tiles: Point[]; canWalk: boolean; }
 
-interface Bounds {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-}
-
-interface CollisionBox {
-    points: Point[];
-    tiles: Point[];
-    canWalk: boolean;
-}
-
-interface RemotePlayer {
-    id: string;
-    sprite: PIXI.Sprite;
-    x: number;
-    y: number;
-}
-
-// Constants
 const GAME_CONSTANTS = {
     PLAYER_SIZE: 32,
     COLLISION_MARGIN: 8,
-    WORLD_BOUNDS: {
-        x: 0,
-        y: 0,
-        width: 32 * 30,
-        height: 32 * 20,
-    },
+    WORLD_BOUNDS: { x: 0, y: 0, width: 32 * 30, height: 32 * 20 },
 } as const;
 
 export class Game {
     private app: PIXI.Application;
-    private player!: Player; // Local player
-    private remotePlayers: Map<string, RemotePlayer> = new Map(); // Other players
+    private player!: Player;
+    private remotePlayers: Map<string, AnimatedCharacter> = new Map();
     private pc!: PC;
     private gameContainer: PIXI.Container;
     private tileMap!: TileMap;
@@ -66,12 +39,10 @@ export class Game {
         this.gameContainer = new PIXI.Container();
         this.app.stage.addChild(this.gameContainer);
 
-        // Initialize WebSocket connection
         this.ws = new WebSocket('ws://localhost:8080');
         this.setupWebSocket();
 
         this.initializeGame();
-
         this.debugOverlay = new DebugOverlay(this.tileMap.getTileSize());
         this.gameContainer.addChild(this.debugOverlay.getContainer());
 
@@ -79,22 +50,19 @@ export class Game {
     }
 
     private setupWebSocket(): void {
-        this.ws.onopen = () => {
-            console.log('Connected to WebSocket server');
-        };
+        this.ws.onopen = () => console.log('Connected to WebSocket server');
 
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
             switch (data.type) {
                 case 'init':
-                    this.player.id = data.id; // Assign local player ID
+                    this.player.id = data.id;
+                    this.player.character.id = data.id;
                     console.log(`Assigned ID: ${this.player.id}`);
                     break;
                 case 'players':
-                    // Initialize existing players
-                    for (const [id, pos] of Object.entries(data.players)) {
-                        const {x,y} = pos as {x: number, y: number};
-                        if (id !== this.player.id) this.addRemotePlayer(id, x, y);
+                    for (const [id, pos] of Object.entries(data.players as { [key: string]: { x: number; y: number } })) {
+                        if (id !== this.player.id) this.addRemotePlayer(id, pos.x, pos.y);
                     }
                     break;
                 case 'join':
@@ -109,38 +77,29 @@ export class Game {
             }
         };
 
-        this.ws.onclose = () => {
-            console.log('Disconnected from WebSocket server');
-        };
+        this.ws.onclose = () => console.log('Disconnected from WebSocket server');
     }
 
     private addRemotePlayer(id: string, x: number, y: number): void {
         if (this.remotePlayers.has(id)) return;
-        const sprite = new PIXI.Sprite(PIXI.Texture.WHITE); // Placeholder; replace with player sprite
-        sprite.width = GAME_CONSTANTS.PLAYER_SIZE;
-        sprite.height = GAME_CONSTANTS.PLAYER_SIZE;
-        sprite.tint = 0x0000ff; // Blue to distinguish from local player (red)
-        sprite.x = x;
-        sprite.y = y;
-        this.gameContainer.addChild(sprite);
-        this.remotePlayers.set(id, { id, sprite, x, y });
+        const character = new AnimatedCharacter(id, x, y);
+        character.sprite.tint = 0x0000ff; // Blue for remote players
+        this.gameContainer.addChild(character.sprite);
+        this.remotePlayers.set(id, character);
         console.log(`Added remote player ${id} at (${x}, ${y})`);
     }
 
     private updateRemotePlayer(id: string, x: number, y: number): void {
-        const player = this.remotePlayers.get(id);
-        if (player) {
-            player.x = x;
-            player.y = y;
-            player.sprite.x = x;
-            player.sprite.y = y;
+        const character = this.remotePlayers.get(id);
+        if (character) {
+            character.updatePosition(x, y);
         }
     }
 
     private removeRemotePlayer(id: string): void {
-        const player = this.remotePlayers.get(id);
-        if (player) {
-            this.gameContainer.removeChild(player.sprite);
+        const character = this.remotePlayers.get(id);
+        if (character) {
+            this.gameContainer.removeChild(character.sprite);
             this.remotePlayers.delete(id);
             console.log(`Removed remote player ${id}`);
         }
@@ -180,10 +139,7 @@ export class Game {
     }
 
     private initializeGameObjects(): void {
-        this.player = new Player(
-            GAME_CONSTANTS.WORLD_BOUNDS.width / 2,
-            GAME_CONSTANTS.WORLD_BOUNDS.height / 2
-        );
+        this.player = new Player(GAME_CONSTANTS.WORLD_BOUNDS.width / 2, GAME_CONSTANTS.WORLD_BOUNDS.height / 2);
         this.pc = new PC(100, 100, this.debugMode);
 
         this.gameContainer.addChild(this.pc.getInteractionZone());
