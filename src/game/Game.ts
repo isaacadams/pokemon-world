@@ -10,6 +10,7 @@ export class Game {
     private pc: PC;
     private gameContainer: PIXI.Container;
     private tileMap: TileMap;
+    private debugGraphics: PIXI.Graphics;
     private worldBounds = {
         x: 0,
         y: 0,
@@ -46,6 +47,10 @@ export class Game {
         this.gameContainer.addChild(this.pc.sprite);
         this.app.stage.addChild(this.pc.getInterface());
 
+        // Initialize debug graphics last so it's on top
+        this.debugGraphics = new PIXI.Graphics();
+        this.gameContainer.addChild(this.debugGraphics);
+
         // Center the game container
         this.centerGameContainer();
 
@@ -59,7 +64,7 @@ export class Game {
             console.log('Game running in debug mode');
         }
 
-        // Set up initial map (we'll make this more sophisticated later)
+        // Set up initial map
         this.setupInitialMap();
     }
 
@@ -120,8 +125,45 @@ export class Game {
     private gameLoop(deltaTime: number): void {
         const nextPosition = this.player.getNextPosition(deltaTime);
         
-        // Check world boundaries
-        if (this.isWithinBounds(nextPosition.x, nextPosition.y)) {
+        // Convert pixel position to tile coordinates for each corner of the player sprite
+        const playerSize = 32; // Player sprite size
+        const margin = 8; // Collision margin (adjust this to make collision area larger/smaller)
+        
+        // Since the sprite is anchored at center (0.5), adjust the position to get the top-left corner
+        const spriteLeft = nextPosition.x - playerSize/2;
+        const spriteTop = nextPosition.y - playerSize/2;
+        
+        // Check all four corners of the player sprite, centered
+        const tilesToCheck = [
+            // Top-left corner
+            {
+                x: Math.floor((spriteLeft + margin) / this.tileMap.getTileSize()),
+                y: Math.floor((spriteTop + margin) / this.tileMap.getTileSize())
+            },
+            // Top-right corner
+            {
+                x: Math.floor((spriteLeft + playerSize - margin) / this.tileMap.getTileSize()),
+                y: Math.floor((spriteTop + margin) / this.tileMap.getTileSize())
+            },
+            // Bottom-left corner
+            {
+                x: Math.floor((spriteLeft + margin) / this.tileMap.getTileSize()),
+                y: Math.floor((spriteTop + playerSize - margin) / this.tileMap.getTileSize())
+            },
+            // Bottom-right corner
+            {
+                x: Math.floor((spriteLeft + playerSize - margin) / this.tileMap.getTileSize()),
+                y: Math.floor((spriteTop + playerSize - margin) / this.tileMap.getTileSize())
+            }
+        ];
+
+        // Check if all tiles are walkable
+        const canWalk = tilesToCheck.every(tile => 
+            this.isWithinBounds(nextPosition.x, nextPosition.y) && 
+            this.tileMap.isTileWalkable(tile.x, tile.y)
+        );
+
+        if (canWalk) {
             this.player.update(deltaTime);
         }
 
@@ -133,6 +175,80 @@ export class Game {
         } else {
             this.pc.getInteractionZone().alpha = 0;
         }
+
+        // Update debug visualization
+        if (Game.DEBUG_MODE) {
+            this.updateDebugVisualization(nextPosition, playerSize, margin, tilesToCheck, canWalk);
+        }
+    }
+
+    private updateDebugVisualization(
+        nextPosition: { x: number; y: number }, 
+        playerSize: number, 
+        margin: number, 
+        tilesToCheck: { x: number; y: number }[], 
+        canWalk: boolean
+    ): void {
+        this.debugGraphics.clear();
+
+        // Draw tile grid
+        const tileSize = this.tileMap.getTileSize();
+        const mapWidth = Math.ceil(this.worldBounds.width / tileSize);
+        const mapHeight = Math.ceil(this.worldBounds.height / tileSize);
+
+        // Draw walkable/non-walkable tiles
+        for (let y = 0; y < mapHeight; y++) {
+            for (let x = 0; x < mapWidth; x++) {
+                const isWalkable = this.tileMap.isTileWalkable(x, y);
+                this.debugGraphics.lineStyle(1, isWalkable ? 0x00ff00 : 0xff0000, 0.3);
+                this.debugGraphics.drawRect(
+                    x * tileSize,
+                    y * tileSize,
+                    tileSize,
+                    tileSize
+                );
+            }
+        }
+
+        // Draw player collision points
+        this.debugGraphics.lineStyle(2, canWalk ? 0x00ff00 : 0xff0000, 1);
+        
+        // Since the sprite is anchored at center (0.5), adjust the position to get the top-left corner
+        const spriteLeft = nextPosition.x - playerSize/2;
+        const spriteTop = nextPosition.y - playerSize/2;
+        
+        // Draw collision check points
+        const points = [
+            { x: spriteLeft + margin, y: spriteTop + margin },
+            { x: spriteLeft + playerSize - margin, y: spriteTop + margin },
+            { x: spriteLeft + margin, y: spriteTop + playerSize - margin },
+            { x: spriteLeft + playerSize - margin, y: spriteTop + playerSize - margin }
+        ];
+
+        // Draw lines between points to show collision box
+        this.debugGraphics.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+            this.debugGraphics.lineTo(points[i].x, points[i].y);
+        }
+        this.debugGraphics.lineTo(points[0].x, points[0].y);
+
+        // Draw points
+        points.forEach(point => {
+            this.debugGraphics.beginFill(0xffff00);
+            this.debugGraphics.drawCircle(point.x, point.y, 2);
+            this.debugGraphics.endFill();
+        });
+
+        // Draw center point of sprite for reference
+        this.debugGraphics.beginFill(0x00ffff);
+        this.debugGraphics.drawCircle(nextPosition.x, nextPosition.y, 2);
+        this.debugGraphics.endFill();
+
+        // Log debug info
+        console.log(`Player position: (${nextPosition.x}, ${nextPosition.y})`);
+        console.log(`Sprite bounds: (${spriteLeft}, ${spriteTop}) to (${spriteLeft + playerSize}, ${spriteTop + playerSize})`);
+        console.log(`Tiles checked:`, tilesToCheck);
+        console.log(`Can walk: ${canWalk}`);
     }
 
     private isWithinBounds(x: number, y: number): boolean {
