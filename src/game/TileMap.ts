@@ -116,6 +116,14 @@ export class TileMap {
                 }
             }
 
+            //console.log(tileId);
+            if(tileElement) {
+                const e = new TileElement(tileId, tileElement);
+                if (e.impassable()) {
+                    return false;
+                }
+            }
+
             // Define non-walkable tile ranges for tiles without properties
             const nonWalkableTiles = [
                 // Pokemon Center building
@@ -202,5 +210,29 @@ class TileSet {
 
     getElement(id: number) {
         return this.tmx.querySelector(`tile[id="${id}"]`);
+    }
+}
+
+class TileElement {
+    private _impassable: boolean = false;
+
+    constructor(public id: number, private element: Element) {}
+
+    impassable() {
+        if(this._impassable) {
+            return true;
+        }
+
+        if(this.property('impassable') === 'true') {
+            this._impassable = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    property(name: string) {
+        const prop = this.element.querySelector(`property[name="${name}"]`);
+        return prop?.getAttribute('value');
     }
 }

@@ -118,7 +118,6 @@ export class PC {
         );
 
         this.canInteract = distance <= this.interactionDistance;
-        
         // Update debug text
         if (this.debugMode) {
             this.debugText.text = `Distance: ${Math.round(distance)}
