@@ -17,6 +17,7 @@ export class TileMap {
     private config: TilesetDefinition;
     private layers: PIXI.Container[] = [];
     private debugMode: boolean = false;
+    private verboseMode: boolean = false;
 
     constructor(tilesetPath: string, mapWidth: number, mapHeight: number) {
         this.container = new PIXI.Container();
@@ -96,7 +97,7 @@ export class TileMap {
             const tileY = Math.floor(tile.texture.frame.y / this.tileSize);
             const tileId = tileY * 8 + tileX + 1; // 8 is the number of columns in the tileset
 
-            if (this.debugMode) {
+            if (this.debugMode && this.verboseMode) {
                 console.log(`Checking tile at (${x},${y}) Layer ${layer}: ID=${tileId}, frame=(${tileX},${tileY})`);
             }
 
@@ -105,7 +106,7 @@ export class TileMap {
             if (tileElement) {
                 const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
                 if (canWalkProperty && canWalkProperty.getAttribute('value') === 'true') {
-                    if (this.debugMode) {
+                    if (this.debugMode && this.verboseMode) {
                         console.log(`Tile ${tileId} in layer ${layer} is walkable (canWalk property)`);
                     }
                     continue;
@@ -144,14 +145,14 @@ export class TileMap {
             for (const range of nonWalkableTiles) {
                 if (range.length === 1) {
                     if (tileId === range[0]) {
-                        if (this.debugMode) {
+                        if (this.debugMode && this.verboseMode) {
                             console.log(`Tile ${tileId} in layer ${layer} is non-walkable (exact match)`);
                         }
                         return false;
                     }
                 } else if (range.length === 2) {
                     if (tileId >= range[0] && tileId <= range[1]) {
-                        if (this.debugMode) {
+                        if (this.debugMode && this.verboseMode) {
                             console.log(`Tile ${tileId} in layer ${layer} is non-walkable (in range ${range[0]}-${range[1]})`);
                         }
                         return false;
@@ -161,7 +162,7 @@ export class TileMap {
         }
 
         // If we get here, no non-walkable tiles were found in any layer
-        if (this.debugMode) {
+        if (this.debugMode && this.verboseMode) {
             console.log(`Position (${x},${y}) is walkable`);
         }
         return true;
@@ -175,6 +176,10 @@ export class TileMap {
 
     public setDebugMode(enabled: boolean): void {
         this.debugMode = enabled;
+    }
+
+    public setVerboseMode(enabled: boolean): void {
+        this.verboseMode = enabled;
     }
 
     public getTileSize(): number {

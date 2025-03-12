@@ -43,6 +43,7 @@ export class Game {
     private tileMap!: TileMap;
     private debugGraphics!: PIXI.Graphics;
     private debugMode: boolean = false;
+    private verboseMode: boolean = false;
 
     constructor() {
         this.app = new PIXI.Application({
@@ -77,6 +78,11 @@ export class Game {
                 this.pc.setDebugMode(this.debugMode);
                 this.tileMap.setDebugMode(this.debugMode);
                 console.log('Debug mode:', this.debugMode ? 'enabled' : 'disabled');
+            }
+
+            if(e.key === 'v' && this.debugMode) {
+                this.verboseMode = !this.verboseMode;
+                this.tileMap.setVerboseMode(this.verboseMode);
             }
         });
     }
@@ -141,7 +147,7 @@ export class Game {
         this.drawTileGrid();
         this.drawCollisionBox(collisionBox);
         
-        if (this.debugMode) {
+        if (this.debugMode && this.verboseMode) {
             console.log({
                 position: `(${position.x}, ${position.y})`,
                 tiles: collisionBox.tiles,
