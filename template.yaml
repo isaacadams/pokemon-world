@@ -77,12 +77,21 @@ Resources:
           yum update -y
           curl -sL https://rpm.nodesource.com/setup_18.x | bash -
           yum install -y nodejs
+
+          dnf install -y firewalld
+          systemctl start firewalld
+          firewall-cmd --add-port=8080/tcp --permanent
+          firewall-cmd --reload
+
+          dnf install -y tmux
+          
           mkdir -p /home/ec2-user/websocket-server
           cd /home/ec2-user/websocket-server
           aws s3 cp s3://${ServerArtifactBucket}/server.js .
           npm init -y
           npm install ws
-          node server.js &
+
+          tmux new-session -d -s pokemon_world "node server.js"
 
   # Elastic IP for WebSocket Server
   WebSocketServerEIP:
