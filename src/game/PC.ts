@@ -8,8 +8,11 @@ export class PC {
     private interactionDistance: number = 100;
     private canInteract: boolean = false;
     private debugText: PIXI.Text;
+    private debugMode: boolean;
 
-    constructor(x: number, y: number) {
+    constructor(x: number, y: number, debugMode: boolean = false) {
+        this.debugMode = debugMode;
+
         // Create a blue rectangle for the PC
         const texture = PIXI.Texture.WHITE;
         this.sprite = new PIXI.Sprite(texture);
@@ -21,20 +24,23 @@ export class PC {
 
         // Create interaction zone
         this.interactionZone = new PIXI.Graphics();
-        this.interactionZone.lineStyle(1, 0xFFFFFF, 0.3);
+        this.interactionZone.lineStyle(2, 0xFFFFFF, 0.5);
         this.interactionZone.drawCircle(0, 0, this.interactionDistance);
         this.interactionZone.x = x + this.sprite.width / 2;
         this.interactionZone.y = y + this.sprite.height / 2;
         this.interactionZone.alpha = 0;
 
-        // Create debug text
+        // Create debug text (only visible in debug mode)
         this.debugText = new PIXI.Text('', {
             fontFamily: 'Arial',
             fontSize: 10,
-            fill: 'white'
+            fill: 'white',
+            stroke: 'black',
+            strokeThickness: 2
         });
         this.debugText.x = x;
         this.debugText.y = y + 60;
+        this.debugText.visible = this.debugMode;
         this.sprite.addChild(this.debugText);
 
         // Create the PC interface container (initially hidden)
@@ -63,7 +69,9 @@ export class PC {
         const hintStyle = new PIXI.TextStyle({
             fontFamily: 'Arial',
             fontSize: 12,
-            fill: 'white'
+            fill: 'white',
+            stroke: 'black',
+            strokeThickness: 2
         });
         const hint = new PIXI.Text('Press E to interact', hintStyle);
         hint.x = -hint.width / 2;
@@ -77,7 +85,7 @@ export class PC {
         // Add keyboard listeners
         window.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key.toLowerCase() === 'e' && this.canInteract && !this.isOpen) {
-                console.log('E pressed, canInteract:', this.canInteract);
+                if (this.debugMode) console.log('E pressed, canInteract:', this.canInteract);
                 this.interact();
             } else if (e.key === 'Escape' && this.isOpen) {
                 this.closeInterface();
@@ -94,8 +102,8 @@ export class PC {
         
         // Convert player bounds to local coordinates
         const playerCenter = {
-            x: playerBounds.x - this.sprite.parent.x,  // Adjust for container position
-            y: playerBounds.y - this.sprite.parent.y   // Adjust for container position
+            x: playerBounds.x - this.sprite.parent.x,
+            y: playerBounds.y - this.sprite.parent.y
         };
 
         const distance = Math.sqrt(
@@ -105,13 +113,18 @@ export class PC {
 
         this.canInteract = distance <= this.interactionDistance;
         
-        // Update debug text with more info
-        this.debugText.text = `Distance: ${Math.round(distance)}
+        // Update debug text if in debug mode
+        if (this.debugMode) {
+            this.debugText.visible = true;
+            this.debugText.text = `Distance: ${Math.round(distance)}
 PC: ${Math.round(pcCenter.x)},${Math.round(pcCenter.y)}
 Player: ${Math.round(playerCenter.x)},${Math.round(playerCenter.y)}
 CanInteract: ${this.canInteract}`;
+        } else {
+            this.debugText.visible = false;
+        }
         
-        // Update interaction zone visibility
+        // Always show interaction zone when in range
         this.interactionZone.alpha = this.canInteract ? 0.3 : 0;
         
         return this.canInteract;
@@ -122,14 +135,13 @@ CanInteract: ${this.canInteract}`;
     }
 
     public interact(): void {
-        console.log('Interact called, isOpen:', this.isOpen);
         if (!this.isOpen) {
+            if (this.debugMode) console.log('Opening interface');
             this.openInterface();
         }
     }
 
     private openInterface(): void {
-        console.log('Opening interface');
         this.isOpen = true;
         this.interface.visible = true;
         

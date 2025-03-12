@@ -1,8 +1,9 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 
-module.exports = {
-  mode: 'development',
+module.exports = (env, argv) => ({
+  mode: argv.mode || 'development',
   entry: './src/index.ts',
   module: {
     rules: [
@@ -28,6 +29,9 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: 'src/index.html',
     }),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(argv.mode || 'development')
+    })
   ],
   devServer: {
     static: {
@@ -36,4 +40,4 @@ module.exports = {
     compress: true,
     port: 9000,
   },
-}; 
+}); 

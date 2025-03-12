@@ -13,6 +13,7 @@ export class Game {
         width: 800,
         height: 600
     };
+    private static readonly DEBUG_MODE = process.env.NODE_ENV === 'development';
 
     constructor() {
         this.app = new PIXI.Application({
@@ -32,7 +33,7 @@ export class Game {
 
         // Initialize game objects
         this.player = new Player(this.worldBounds.width / 2, this.worldBounds.height / 2);
-        this.pc = new PC(100, 100);
+        this.pc = new PC(100, 100, Game.DEBUG_MODE);
 
         // Add interaction zone first (so it's behind other sprites)
         this.gameContainer.addChild(this.pc.getInteractionZone());
@@ -48,6 +49,10 @@ export class Game {
 
         // Start the game loop
         this.app.ticker.add((delta) => this.gameLoop(delta));
+
+        if (Game.DEBUG_MODE) {
+            console.log('Game running in debug mode');
+        }
     }
 
     private centerGameContainer(): void {
