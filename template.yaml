@@ -12,14 +12,13 @@ Parameters:
     Description: ID of the VPC to deploy the EC2 instance into (e.g., vpc-12345678)
   SubnetId:
     Type: AWS::EC2::Subnet::Id
-    Description: ID of a public subnet within the VPC with auto-assign public IP enabled (e.g., subnet-12345678)
+    Description: ID of a subnet within the VPC (e.g., subnet-12345678)
   KeyPairName:
     Type: String
     Description: Name of an existing EC2 key pair (e.g., my-key-pair)
     Default: my-key-pair
 
 Resources:
-  # S3 Bucket for Static Game Site
   GameBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -42,7 +41,6 @@ Resources:
         BlockPublicPolicy: false
         RestrictPublicBuckets: false
 
-  # Bucket Policy to Allow Public Read Access
   GameBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -54,7 +52,6 @@ Resources:
             Action: s3:GetObject
             Resource: !Sub arn:aws:s3:::${GameBucket}/*
 
-  # S3 Bucket for Server Artifacts
   ServerArtifactBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -63,15 +60,14 @@ Resources:
         Rules:
           - ObjectOwnership: BucketOwnerEnforced
 
-  # EC2 Instance for WebSocket Server
   WebSocketServerInstance:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: t2.micro
-      ImageId: ami-0ebfd941bbafe70c6 # Amazon Linux 2 AMI (us-east-1, update for your region)
+      ImageId: ami-0ebfd941bbafe70c6
       KeyName: !Ref KeyPairName
       SecurityGroupIds: [!Ref WebSocketSecurityGroup]
-      SubnetId: !Ref SubnetId # Must be a public subnet with auto-assign public IP enabled
+      SubnetId: !Ref SubnetId
       Tags:
         - Key: Name
           Value: WebSocketServer
@@ -88,7 +84,19 @@ Resources:
           npm install ws
           node server.js &
 
-  # Security Group for WebSocket Server
+  # Elastic IP for WebSocket Server
+  WebSocketServerEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # Associate EIP with EC2 Instance
+  WebSocketServerEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref WebSocketServerInstance
+      EIP: !Ref WebSocketServerEIP
+
   WebSocketSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -98,16 +106,19 @@ Resources:
         - IpProtocol: tcp
           FromPort: 8080
           ToPort: 8080
-          CidrIp: 0.0.0.0/0 # Allow from anywhere (adjust for security)
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0 # SSH access (restrict in production)
+          CidrIp: 0.0.0.0/0
 
 Outputs:
   GameSiteUrl:
     Description: URL of the static game site
     Value: !GetAtt GameBucket.WebsiteURL
+  WebSocketServerUrl:
+    Description: URL of the WebSocket server
+    Value: !Sub ws://${WebSocketServerEIP.PublicIp}:8080 # Use EIP’s public IP
   EC2InstanceId:
     Description: ID of the EC2 instance running the WebSocket server
     Value: !Ref WebSocketServerInstance
