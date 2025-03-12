@@ -3,6 +3,7 @@ import { Player } from './Player';
 import { PC } from './PC';
 import { TileMap } from './TileMap';
 import tileset from '@assets/tilesets/overworld.png';
+import { DebugOverlay } from './DebugOverlay';
 
 // Types
 interface Point {
@@ -44,6 +45,7 @@ export class Game {
     private debugGraphics!: PIXI.Graphics;
     private debugMode: boolean = false;
     private verboseMode: boolean = false;
+    private debugOverlay: DebugOverlay;
 
     constructor() {
         this.app = new PIXI.Application({
@@ -56,6 +58,11 @@ export class Game {
         this.app.stage.addChild(this.gameContainer);
 
         this.initializeGame();
+
+        // debug overlay
+        this.debugOverlay = new DebugOverlay(this.tileMap.getTileSize());
+        this.gameContainer.addChild(this.debugOverlay.getContainer());
+
         this.setupEventListeners();
     }
 
@@ -77,12 +84,14 @@ export class Game {
                 this.debugGraphics.visible = this.debugMode;
                 this.pc.setDebugMode(this.debugMode);
                 this.tileMap.setDebugMode(this.debugMode);
+                this.debugOverlay.setDebugMode(this.debugMode);
                 console.log('Debug mode:', this.debugMode ? 'enabled' : 'disabled');
             }
 
             if(e.key === 'v' && this.debugMode) {
                 this.verboseMode = !this.verboseMode;
                 this.tileMap.setVerboseMode(this.verboseMode);
+                this.debugOverlay.setVerboseMode(this.verboseMode);
             }
         });
     }
@@ -146,6 +155,12 @@ export class Game {
         this.debugGraphics.clear();
         this.drawTileGrid();
         this.drawCollisionBox(collisionBox);
+        this.debugOverlay.update({
+            x: position.x, 
+            y: position.y, 
+            width: GAME_CONSTANTS.PLAYER_SIZE / 2, 
+            height: GAME_CONSTANTS.PLAYER_SIZE / 2
+        }, this.tileMap.getTiles());
         
         if (this.debugMode && this.verboseMode) {
             console.log({
@@ -243,17 +258,5 @@ export class Game {
 
     public start(): void {
         document.getElementById('game-container')?.appendChild(this.app.view as HTMLCanvasElement);
-    }
-
-    private setupInitialMap(): void {
-        // Remove this method as we're now loading from TMX
-    }
-
-    private addBoulders(): void {
-        // Remove this method as we're now loading from TMX
-    }
-
-    private createCenterPaths(): void {
-        // Remove this method as we're now loading from TMX
     }
 } 

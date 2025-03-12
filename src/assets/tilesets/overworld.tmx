@@ -26,6 +26,13 @@
   </properties>
  </tile>
 
+ <tile id="76" type="fence">
+  <properties>
+   <property name="impassable" type="bool" value="true"/>
+   <property name="description" type="string" value="wooden fence"/>
+  </properties>
+ </tile>
+
  <tile id="104" type="PokemonCenter"/>
  <tile id="105" type="PokemonCenter"/>
  <tile id="106" type="PokemonCenter"/>
