@@ -29,19 +29,33 @@ export class Player {
         this.keys[e.key.toLowerCase()] = false;
     }
 
-    public update(delta: number): void {
-        // Handle movement
+    public getNextPosition(delta: number): { x: number, y: number } {
+        let nextX = this.sprite.x;
+        let nextY = this.sprite.y;
+
         if (this.keys['w'] || this.keys['arrowup']) {
-            this.sprite.y -= this.speed * delta;
+            nextY -= this.speed * delta;
         }
         if (this.keys['s'] || this.keys['arrowdown']) {
-            this.sprite.y += this.speed * delta;
+            nextY += this.speed * delta;
         }
         if (this.keys['a'] || this.keys['arrowleft']) {
-            this.sprite.x -= this.speed * delta;
+            nextX -= this.speed * delta;
         }
         if (this.keys['d'] || this.keys['arrowright']) {
-            this.sprite.x += this.speed * delta;
+            nextX += this.speed * delta;
         }
+
+        return { x: nextX, y: nextY };
+    }
+
+    public update(delta: number): void {
+        const nextPos = this.getNextPosition(delta);
+        this.sprite.x = nextPos.x;
+        this.sprite.y = nextPos.y;
+    }
+
+    public getBounds(): PIXI.Rectangle {
+        return this.sprite.getBounds();
     }
 } 

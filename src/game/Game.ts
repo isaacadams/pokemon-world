@@ -34,9 +34,11 @@ export class Game {
         this.player = new Player(this.worldBounds.width / 2, this.worldBounds.height / 2);
         this.pc = new PC(100, 100);
 
+        // Add interaction zone first (so it's behind other sprites)
+        this.gameContainer.addChild(this.pc.getInteractionZone());
         this.gameContainer.addChild(this.player.sprite);
         this.gameContainer.addChild(this.pc.sprite);
-        this.app.stage.addChild(this.pc.getInterface()); // Add PC interface to the stage
+        this.app.stage.addChild(this.pc.getInterface());
 
         // Center the game container
         this.centerGameContainer();
@@ -63,9 +65,11 @@ export class Game {
 
         this.pc.update(deltaTime);
 
-        // Check for interaction between player and PC
-        if (this.checkCollision(this.player.sprite, this.pc.sprite)) {
-            this.pc.interact();
+        // Check for PC interaction range
+        if (this.pc.isPlayerInRange(this.player.getBounds())) {
+            this.pc.getInteractionZone().alpha = 0.3;
+        } else {
+            this.pc.getInteractionZone().alpha = 0;
         }
     }
 
@@ -75,15 +79,6 @@ export class Game {
                x <= this.worldBounds.width - margin &&
                y >= this.worldBounds.y + margin &&
                y <= this.worldBounds.height - margin;
-    }
-
-    private checkCollision(a: PIXI.Sprite, b: PIXI.Sprite): boolean {
-        const aBox = a.getBounds();
-        const bBox = b.getBounds();
-        return aBox.x + aBox.width > bBox.x &&
-               aBox.x < bBox.x + bBox.width &&
-               aBox.y + aBox.height > bBox.y &&
-               aBox.y < bBox.y + bBox.height;
     }
 
     private onResize(): void {

@@ -4,6 +4,10 @@ export class PC {
     public sprite: PIXI.Sprite;
     private isOpen: boolean = false;
     private interface: PIXI.Container;
+    private interactionZone: PIXI.Graphics;
+    private interactionDistance: number = 100;
+    private canInteract: boolean = false;
+    private debugText: PIXI.Text;
 
     constructor(x: number, y: number) {
         // Create a blue rectangle for the PC
@@ -14,6 +18,24 @@ export class PC {
         this.sprite.tint = 0x0000FF;
         this.sprite.x = x;
         this.sprite.y = y;
+
+        // Create interaction zone
+        this.interactionZone = new PIXI.Graphics();
+        this.interactionZone.lineStyle(1, 0xFFFFFF, 0.3);
+        this.interactionZone.drawCircle(0, 0, this.interactionDistance);
+        this.interactionZone.x = x + this.sprite.width / 2;
+        this.interactionZone.y = y + this.sprite.height / 2;
+        this.interactionZone.alpha = 0;
+
+        // Create debug text
+        this.debugText = new PIXI.Text('', {
+            fontFamily: 'Arial',
+            fontSize: 10,
+            fill: 'white'
+        });
+        this.debugText.x = x;
+        this.debugText.y = y + 60;
+        this.sprite.addChild(this.debugText);
 
         // Create the PC interface container (initially hidden)
         this.interface = new PIXI.Container();
@@ -37,18 +59,77 @@ export class PC {
         title.y = 20;
         this.interface.addChild(title);
 
+        // Add interaction hint text
+        const hintStyle = new PIXI.TextStyle({
+            fontFamily: 'Arial',
+            fontSize: 12,
+            fill: 'white'
+        });
+        const hint = new PIXI.Text('Press E to interact', hintStyle);
+        hint.x = -hint.width / 2;
+        hint.y = -40;
+        this.sprite.addChild(hint);
+
         // Center the interface on screen
         this.interface.x = (window.innerWidth - this.interface.width) / 2;
         this.interface.y = (window.innerHeight - this.interface.height) / 2;
+
+        // Add keyboard listeners
+        window.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key.toLowerCase() === 'e' && this.canInteract && !this.isOpen) {
+                console.log('E pressed, canInteract:', this.canInteract);
+                this.interact();
+            } else if (e.key === 'Escape' && this.isOpen) {
+                this.closeInterface();
+            }
+        });
+    }
+
+    public isPlayerInRange(playerBounds: PIXI.Rectangle): boolean {
+        // Use local coordinates for both PC and player
+        const pcCenter = {
+            x: this.sprite.x + this.sprite.width / 2,
+            y: this.sprite.y + this.sprite.height / 2
+        };
+        
+        // Convert player bounds to local coordinates
+        const playerCenter = {
+            x: playerBounds.x - this.sprite.parent.x,  // Adjust for container position
+            y: playerBounds.y - this.sprite.parent.y   // Adjust for container position
+        };
+
+        const distance = Math.sqrt(
+            Math.pow(pcCenter.x - playerCenter.x, 2) +
+            Math.pow(pcCenter.y - playerCenter.y, 2)
+        );
+
+        this.canInteract = distance <= this.interactionDistance;
+        
+        // Update debug text with more info
+        this.debugText.text = `Distance: ${Math.round(distance)}
+PC: ${Math.round(pcCenter.x)},${Math.round(pcCenter.y)}
+Player: ${Math.round(playerCenter.x)},${Math.round(playerCenter.y)}
+CanInteract: ${this.canInteract}`;
+        
+        // Update interaction zone visibility
+        this.interactionZone.alpha = this.canInteract ? 0.3 : 0;
+        
+        return this.canInteract;
+    }
+
+    public getInteractionZone(): PIXI.Graphics {
+        return this.interactionZone;
     }
 
     public interact(): void {
+        console.log('Interact called, isOpen:', this.isOpen);
         if (!this.isOpen) {
             this.openInterface();
         }
     }
 
     private openInterface(): void {
+        console.log('Opening interface');
         this.isOpen = true;
         this.interface.visible = true;
         
@@ -69,6 +150,10 @@ export class PC {
     private closeInterface(): void {
         this.isOpen = false;
         this.interface.visible = false;
+        // Remove the close button to prevent duplicates
+        if (this.interface.children.length > 2) { // Background and title are first two children
+            this.interface.removeChild(this.interface.children[this.interface.children.length - 1]);
+        }
     }
 
     public update(delta: number): void {
