@@ -19,6 +19,10 @@ module.exports = (env, argv) => ({
           filename: 'assets/[hash][ext][query]'
         }
       },
+      {
+        test: /\.tmx$/i,
+        type: 'asset/source',
+      },
     ],
   },
   resolve: {

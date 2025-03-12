@@ -67,23 +67,48 @@ export class Game {
         const mapWidth = Math.ceil(this.worldBounds.width / 32);
         const mapHeight = Math.ceil(this.worldBounds.height / 32);
 
-        // Fill with grass tiles (assuming grass tile is at 0,0 in tileset)
+        // Fill with grass tiles (randomly choosing between variants)
         for (let y = 0; y < mapHeight; y++) {
             for (let x = 0; x < mapWidth; x++) {
-                this.tileMap.setTile(x, y, 0, 0);
+                const grassType = Math.random() < 0.33 ? 'GRASS_1' : 
+                                Math.random() < 0.5 ? 'GRASS_2' : 'GRASS_3';
+                this.tileMap.setTileByType(x, y, grassType);
             }
         }
 
-        // Add some path tiles (assuming path tile is at 1,0 in tileset)
+        // Add some boulders for variety
+        const numBoulders = Math.floor((mapWidth * mapHeight) * 0.05); // 5% of tiles
+        for (let i = 0; i < numBoulders; i++) {
+            const x = Math.floor(Math.random() * mapWidth);
+            const y = Math.floor(Math.random() * mapHeight);
+            const boulderType = Math.random() < 0.5 ? 'BOULDER_1' : 'BOULDER_2';
+            
+            // Don't place boulders in the center path
+            if (Math.abs(x - mapWidth/2) > 2 && Math.abs(y - mapHeight/2) > 2) {
+                this.tileMap.setTileByType(x, y, boulderType);
+            }
+        }
+
+        // Create paths in the center
         const centerX = Math.floor(mapWidth / 2);
         const centerY = Math.floor(mapHeight / 2);
         
-        // Create a simple path
+        // Clear a 3-tile wide path
         for (let x = 0; x < mapWidth; x++) {
-            this.tileMap.setTile(x, centerY, 1, 0);
+            for (let offset = -1; offset <= 1; offset++) {
+                const y = centerY + offset;
+                if (y >= 0 && y < mapHeight) {
+                    this.tileMap.setTileByType(x, y, 'GRASS_1');
+                }
+            }
         }
         for (let y = 0; y < mapHeight; y++) {
-            this.tileMap.setTile(centerX, y, 1, 0);
+            for (let offset = -1; offset <= 1; offset++) {
+                const x = centerX + offset;
+                if (x >= 0 && x < mapWidth) {
+                    this.tileMap.setTileByType(x, y, 'GRASS_1');
+                }
+            }
         }
     }
 
