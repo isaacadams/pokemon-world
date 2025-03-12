@@ -93,14 +93,20 @@ export class PC {
         });
     }
 
+    public setDebugMode(enabled: boolean): void {
+        this.debugMode = enabled;
+        this.debugText.visible = enabled;
+        if (!enabled) {
+            this.interactionZone.alpha = 0;
+        }
+    }
+
     public isPlayerInRange(playerBounds: PIXI.Rectangle): boolean {
-        // Use local coordinates for both PC and player
         const pcCenter = {
             x: this.sprite.x + this.sprite.width / 2,
             y: this.sprite.y + this.sprite.height / 2
         };
         
-        // Convert player bounds to local coordinates
         const playerCenter = {
             x: playerBounds.x - this.sprite.parent.x,
             y: playerBounds.y - this.sprite.parent.y
@@ -113,19 +119,16 @@ export class PC {
 
         this.canInteract = distance <= this.interactionDistance;
         
-        // Update debug text if in debug mode
+        // Update debug text
         if (this.debugMode) {
-            this.debugText.visible = true;
             this.debugText.text = `Distance: ${Math.round(distance)}
 PC: ${Math.round(pcCenter.x)},${Math.round(pcCenter.y)}
 Player: ${Math.round(playerCenter.x)},${Math.round(playerCenter.y)}
 CanInteract: ${this.canInteract}`;
-        } else {
-            this.debugText.visible = false;
         }
         
-        // Always show interaction zone when in range
-        this.interactionZone.alpha = this.canInteract ? 0.3 : 0;
+        // Only show interaction zone when in range and not in debug mode
+        this.interactionZone.alpha = this.canInteract && !this.debugMode ? 0.3 : 0;
         
         return this.canInteract;
     }

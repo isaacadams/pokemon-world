@@ -42,7 +42,7 @@ export class Game {
     private gameContainer: PIXI.Container;
     private tileMap!: TileMap;
     private debugGraphics!: PIXI.Graphics;
-    private static readonly DEBUG_MODE = process.env.NODE_ENV === 'development';
+    private debugMode: boolean = false;
 
     constructor() {
         this.app = new PIXI.Application({
@@ -56,10 +56,6 @@ export class Game {
 
         this.initializeGame();
         this.setupEventListeners();
-
-        if (Game.DEBUG_MODE) {
-            console.log('Game running in debug mode');
-        }
     }
 
     private initializeGame(): void {
@@ -72,6 +68,16 @@ export class Game {
     private setupEventListeners(): void {
         window.addEventListener('resize', this.onResize.bind(this));
         this.app.ticker.add(this.gameLoop.bind(this));
+
+        // Add debug mode toggle
+        window.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === '`') { // Toggle debug mode with backtick key
+                this.debugMode = !this.debugMode;
+                this.debugGraphics.visible = this.debugMode;
+                this.pc.setDebugMode(this.debugMode);
+                console.log('Debug mode:', this.debugMode ? 'enabled' : 'disabled');
+            }
+        });
     }
 
     private initializeTileMap(): void {
@@ -91,8 +97,8 @@ export class Game {
             GAME_CONSTANTS.WORLD_BOUNDS.height / 2
         );
 
-        // Initialize PC
-        this.pc = new PC(100, 100, Game.DEBUG_MODE);
+        // Initialize PC with current debug mode
+        this.pc = new PC(100, 100, this.debugMode);
 
         // Add objects to container in correct order
         this.gameContainer.addChild(this.pc.getInteractionZone());
@@ -103,6 +109,7 @@ export class Game {
 
     private initializeDebugGraphics(): void {
         this.debugGraphics = new PIXI.Graphics();
+        this.debugGraphics.visible = this.debugMode;
         this.gameContainer.addChild(this.debugGraphics);
     }
 
@@ -125,17 +132,22 @@ export class Game {
     }
 
     private updateDebug(position: Point, collisionBox: CollisionBox): void {
-        if (!Game.DEBUG_MODE) return;
+        if (!this.debugMode) {
+            this.debugGraphics.clear();
+            return;
+        }
 
         this.debugGraphics.clear();
         this.drawTileGrid();
         this.drawCollisionBox(collisionBox);
         
-        console.log({
-            position: `(${position.x}, ${position.y})`,
-            tiles: collisionBox.tiles,
-            canWalk: collisionBox.canWalk
-        });
+        if (this.debugMode) {
+            console.log({
+                position: `(${position.x}, ${position.y})`,
+                tiles: collisionBox.tiles,
+                canWalk: collisionBox.canWalk
+            });
+        }
     }
 
     private calculateCollisionBox(position: Point): CollisionBox {
