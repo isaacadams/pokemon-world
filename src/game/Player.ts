@@ -16,23 +16,25 @@ export class Player {
     private isMoving: boolean = false;
     private static readonly SPRITE_SIZE = 64;
     private static readonly ANIMATION_SPEED = 0.2;
+    private static readonly SCALE = 0.75; // Increased from 0.5 to 0.75 (48x48 pixels)
 
     constructor(x: number, y: number) {
         // Create a simple red square texture for the fallback
         const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
+        const size = Math.floor(Player.SPRITE_SIZE * Player.SCALE);
+        canvas.width = size;
+        canvas.height = size;
         const ctx = canvas.getContext('2d');
         if (ctx) {
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(0, 0, 32, 32);
+            ctx.fillRect(0, 0, size, size);
         }
         
         // Create the fallback sprite
         this.sprite = new PIXI.AnimatedSprite([PIXI.Texture.from(canvas)]);
         this.sprite.x = x;
         this.sprite.y = y;
-        this.sprite.anchor.set(0.5);
+        this.sprite.anchor.set(0.5, 1.0);
 
         // Load the actual sprite
         this.loadPlayerSprite(x, y).catch(error => {
@@ -58,8 +60,8 @@ export class Player {
             this.sprite.textures = this.animations.down.frames;
             this.sprite.x = x;
             this.sprite.y = y;
-            this.sprite.anchor.set(0.5);
-            this.sprite.scale.set(0.5); // Scale down to 32x32 since original is 64x64
+            this.sprite.anchor.set(0.5, 0.75);
+            this.sprite.scale.set(Player.SCALE);
             this.sprite.animationSpeed = Player.ANIMATION_SPEED;
             this.sprite.loop = true;
             this.sprite.gotoAndStop(0);
