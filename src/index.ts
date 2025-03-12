@@ -1,6 +1,6 @@
-import { Game } from './game/Game';
+import { Game } from "./game/Game";
 
 window.onload = () => {
-    const game = new Game();
-    game.start();
-}; 
+   const game = new Game();
+   game.start();
+};

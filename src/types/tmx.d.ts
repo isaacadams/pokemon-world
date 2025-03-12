@@ -1,4 +1,4 @@
-declare module '*.tmx' {
-    const content: string;
-    export default content;
-} 
+declare module "*.tmx" {
+   const content: string;
+   export default content;
+}
