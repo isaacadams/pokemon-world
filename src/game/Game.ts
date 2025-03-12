@@ -1,12 +1,15 @@
 import * as PIXI from 'pixi.js';
 import { Player } from './Player';
 import { PC } from './PC';
+import { TileMap } from './TileMap';
+import tileset from '@assets/tilesets/tileset.png';
 
 export class Game {
     private app: PIXI.Application;
     private player: Player;
     private pc: PC;
     private gameContainer: PIXI.Container;
+    private tileMap: TileMap;
     private worldBounds = {
         x: 0,
         y: 0,
@@ -19,17 +22,19 @@ export class Game {
         this.app = new PIXI.Application({
             width: window.innerWidth,
             height: window.innerHeight,
-            backgroundColor: 0x7CAF75, // Grass-like color
+            backgroundColor: 0x000000, // Black background
         });
 
         this.gameContainer = new PIXI.Container();
         this.app.stage.addChild(this.gameContainer);
 
-        // Draw world boundaries
-        const worldBorder = new PIXI.Graphics();
-        worldBorder.lineStyle(2, 0x000000);
-        worldBorder.drawRect(this.worldBounds.x, this.worldBounds.y, this.worldBounds.width, this.worldBounds.height);
-        this.gameContainer.addChild(worldBorder);
+        // Initialize tilemap
+        this.tileMap = new TileMap(
+            tileset,
+            Math.ceil(this.worldBounds.width / 32),
+            Math.ceil(this.worldBounds.height / 32)
+        );
+        this.gameContainer.addChild(this.tileMap.getContainer());
 
         // Initialize game objects
         this.player = new Player(this.worldBounds.width / 2, this.worldBounds.height / 2);
@@ -52,6 +57,33 @@ export class Game {
 
         if (Game.DEBUG_MODE) {
             console.log('Game running in debug mode');
+        }
+
+        // Set up initial map (we'll make this more sophisticated later)
+        this.setupInitialMap();
+    }
+
+    private setupInitialMap(): void {
+        const mapWidth = Math.ceil(this.worldBounds.width / 32);
+        const mapHeight = Math.ceil(this.worldBounds.height / 32);
+
+        // Fill with grass tiles (assuming grass tile is at 0,0 in tileset)
+        for (let y = 0; y < mapHeight; y++) {
+            for (let x = 0; x < mapWidth; x++) {
+                this.tileMap.setTile(x, y, 0, 0);
+            }
+        }
+
+        // Add some path tiles (assuming path tile is at 1,0 in tileset)
+        const centerX = Math.floor(mapWidth / 2);
+        const centerY = Math.floor(mapHeight / 2);
+        
+        // Create a simple path
+        for (let x = 0; x < mapWidth; x++) {
+            this.tileMap.setTile(x, centerY, 1, 0);
+        }
+        for (let y = 0; y < mapHeight; y++) {
+            this.tileMap.setTile(centerX, y, 1, 0);
         }
     }
 
