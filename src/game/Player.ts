@@ -9,6 +9,7 @@ interface AnimationState {
 
 export class Player {
     public sprite: PIXI.AnimatedSprite;
+    public id: string = ''; // Add this
     private speed: number = 5;
     private keys: { [key: string]: boolean } = {};
     private animations: { [key: string]: AnimationState } = {};

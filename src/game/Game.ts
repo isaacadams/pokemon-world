@@ -24,6 +24,13 @@ interface CollisionBox {
     canWalk: boolean;
 }
 
+interface RemotePlayer {
+    id: string;
+    sprite: PIXI.Sprite;
+    x: number;
+    y: number;
+}
+
 // Constants
 const GAME_CONSTANTS = {
     PLAYER_SIZE: 32,
@@ -31,14 +38,15 @@ const GAME_CONSTANTS = {
     WORLD_BOUNDS: {
         x: 0,
         y: 0,
-        width: 32 * 30, // 30 tiles wide
-        height: 32 * 20  // 20 tiles high
-    }
+        width: 32 * 30,
+        height: 32 * 20,
+    },
 } as const;
 
 export class Game {
     private app: PIXI.Application;
-    private player!: Player;
+    private player!: Player; // Local player
+    private remotePlayers: Map<string, RemotePlayer> = new Map(); // Other players
     private pc!: PC;
     private gameContainer: PIXI.Container;
     private tileMap!: TileMap;
@@ -46,6 +54,7 @@ export class Game {
     private debugMode: boolean = false;
     private verboseMode: boolean = false;
     private debugOverlay: DebugOverlay;
+    private ws: WebSocket;
 
     constructor() {
         this.app = new PIXI.Application({
@@ -57,13 +66,84 @@ export class Game {
         this.gameContainer = new PIXI.Container();
         this.app.stage.addChild(this.gameContainer);
 
+        // Initialize WebSocket connection
+        this.ws = new WebSocket('ws://localhost:8080');
+        this.setupWebSocket();
+
         this.initializeGame();
 
-        // debug overlay
         this.debugOverlay = new DebugOverlay(this.tileMap.getTileSize());
         this.gameContainer.addChild(this.debugOverlay.getContainer());
 
         this.setupEventListeners();
+    }
+
+    private setupWebSocket(): void {
+        this.ws.onopen = () => {
+            console.log('Connected to WebSocket server');
+        };
+
+        this.ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            switch (data.type) {
+                case 'init':
+                    this.player.id = data.id; // Assign local player ID
+                    console.log(`Assigned ID: ${this.player.id}`);
+                    break;
+                case 'players':
+                    // Initialize existing players
+                    for (const [id, pos] of Object.entries(data.players)) {
+                        const {x,y} = pos as {x: number, y: number};
+                        if (id !== this.player.id) this.addRemotePlayer(id, x, y);
+                    }
+                    break;
+                case 'join':
+                    if (data.id !== this.player.id) this.addRemotePlayer(data.id, data.x, data.y);
+                    break;
+                case 'update':
+                    if (data.id !== this.player.id) this.updateRemotePlayer(data.id, data.x, data.y);
+                    break;
+                case 'leave':
+                    this.removeRemotePlayer(data.id);
+                    break;
+            }
+        };
+
+        this.ws.onclose = () => {
+            console.log('Disconnected from WebSocket server');
+        };
+    }
+
+    private addRemotePlayer(id: string, x: number, y: number): void {
+        if (this.remotePlayers.has(id)) return;
+        const sprite = new PIXI.Sprite(PIXI.Texture.WHITE); // Placeholder; replace with player sprite
+        sprite.width = GAME_CONSTANTS.PLAYER_SIZE;
+        sprite.height = GAME_CONSTANTS.PLAYER_SIZE;
+        sprite.tint = 0x0000ff; // Blue to distinguish from local player (red)
+        sprite.x = x;
+        sprite.y = y;
+        this.gameContainer.addChild(sprite);
+        this.remotePlayers.set(id, { id, sprite, x, y });
+        console.log(`Added remote player ${id} at (${x}, ${y})`);
+    }
+
+    private updateRemotePlayer(id: string, x: number, y: number): void {
+        const player = this.remotePlayers.get(id);
+        if (player) {
+            player.x = x;
+            player.y = y;
+            player.sprite.x = x;
+            player.sprite.y = y;
+        }
+    }
+
+    private removeRemotePlayer(id: string): void {
+        const player = this.remotePlayers.get(id);
+        if (player) {
+            this.gameContainer.removeChild(player.sprite);
+            this.remotePlayers.delete(id);
+            console.log(`Removed remote player ${id}`);
+        }
     }
 
     private initializeGame(): void {
@@ -77,9 +157,8 @@ export class Game {
         window.addEventListener('resize', this.onResize.bind(this));
         this.app.ticker.add(this.gameLoop.bind(this));
 
-        // Add debug mode toggle
         window.addEventListener('keydown', (e: KeyboardEvent) => {
-            if (e.key === '`') { // Toggle debug mode with backtick key
+            if (e.key === '`') {
                 this.debugMode = !this.debugMode;
                 this.debugGraphics.visible = this.debugMode;
                 this.pc.setDebugMode(this.debugMode);
@@ -87,8 +166,7 @@ export class Game {
                 this.debugOverlay.setDebugMode(this.debugMode);
                 console.log('Debug mode:', this.debugMode ? 'enabled' : 'disabled');
             }
-
-            if(e.key === 'v' && this.debugMode) {
+            if (e.key === 'v' && this.debugMode) {
                 this.verboseMode = !this.verboseMode;
                 this.tileMap.setVerboseMode(this.verboseMode);
                 this.debugOverlay.setVerboseMode(this.verboseMode);
@@ -97,25 +175,17 @@ export class Game {
     }
 
     private initializeTileMap(): void {
-        this.tileMap = new TileMap(
-            tileset,
-            30, // Map width from TMX
-            20  // Map height from TMX
-        );
+        this.tileMap = new TileMap(tileset, 30, 20);
         this.gameContainer.addChild(this.tileMap.getContainer());
     }
 
     private initializeGameObjects(): void {
-        // Initialize player at a walkable position
         this.player = new Player(
             GAME_CONSTANTS.WORLD_BOUNDS.width / 2,
             GAME_CONSTANTS.WORLD_BOUNDS.height / 2
         );
-
-        // Initialize PC with current debug mode
         this.pc = new PC(100, 100, this.debugMode);
 
-        // Add objects to container in correct order
         this.gameContainer.addChild(this.pc.getInteractionZone());
         this.gameContainer.addChild(this.player.sprite);
         this.gameContainer.addChild(this.pc.sprite);
@@ -134,6 +204,15 @@ export class Game {
 
         if (collisionBox.canWalk) {
             this.player.update(deltaTime);
+            // Send position update to server
+            if (this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'update',
+                    id: this.player.id,
+                    x: this.player.sprite.x,
+                    y: this.player.sprite.y,
+                }));
+            }
         }
 
         this.updatePCInteraction();
@@ -259,4 +338,4 @@ export class Game {
     public start(): void {
         document.getElementById('game-container')?.appendChild(this.app.view as HTMLCanvasElement);
     }
-} 
+}
