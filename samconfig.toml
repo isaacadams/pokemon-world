@@ -1,0 +1,16 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "pokemon-world"
+region = "us-east-1"
+resolve_s3 = true
+confirm_changeset = true
+disable_rollback = false
+capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
+debug = false
+parameter_overrides = [
+    "EnvironmentName=dev",
+    "VpcId=vpc-042b41e1a4ac077db",
+    "SubnetId=subnet-0cf0ccea8ffe916eb",
+    "KeyPairName=default"
+]

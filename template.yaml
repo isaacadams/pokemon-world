@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM template for deploying a WebSocket server on EC2 and a static game site on S3
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    Description: Environment name (e.g., dev, production)
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: ID of the VPC to deploy the EC2 instance into (e.g., vpc-12345678)
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: ID of a public subnet within the VPC with auto-assign public IP enabled (e.g., subnet-12345678)
+  KeyPairName:
+    Type: String
+    Description: Name of an existing EC2 key pair (e.g., my-key-pair)
+    Default: my-key-pair
+
+Resources:
+  # S3 Bucket for Static Game Site
+  GameBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub my-game-client-${EnvironmentName}-${AWS::AccountId}
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET]
+            AllowedOrigins: ['*']
+            MaxAge: 3000
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+
+  # Bucket Policy to Allow Public Read Access
+  GameBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref GameBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub arn:aws:s3:::${GameBucket}/*
+
+  # S3 Bucket for Server Artifacts
+  ServerArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub my-game-server-artifacts-${EnvironmentName}-${AWS::AccountId}
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  # EC2 Instance for WebSocket Server
+  WebSocketServerInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-0ebfd941bbafe70c6 # Amazon Linux 2 AMI (us-east-1, update for your region)
+      KeyName: !Ref KeyPairName
+      SecurityGroupIds: [!Ref WebSocketSecurityGroup]
+      SubnetId: !Ref SubnetId # Must be a public subnet with auto-assign public IP enabled
+      Tags:
+        - Key: Name
+          Value: WebSocketServer
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          curl -sL https://rpm.nodesource.com/setup_18.x | bash -
+          yum install -y nodejs
+          mkdir -p /home/ec2-user/websocket-server
+          cd /home/ec2-user/websocket-server
+          aws s3 cp s3://${ServerArtifactBucket}/server.js .
+          npm init -y
+          npm install ws
+          node server.js &
+
+  # Security Group for WebSocket Server
+  WebSocketSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow WebSocket traffic on port 8080
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0 # Allow from anywhere (adjust for security)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0 # SSH access (restrict in production)
+
+Outputs:
+  GameSiteUrl:
+    Description: URL of the static game site
+    Value: !GetAtt GameBucket.WebsiteURL
+  EC2InstanceId:
+    Description: ID of the EC2 instance running the WebSocket server
+    Value: !Ref WebSocketServerInstance
