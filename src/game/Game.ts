@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import { Player } from './Player';
 import { PC } from './PC';
 import { TileMap } from './TileMap';
-import tileset from '@assets/tilesets/tileset.png';
+import tileset from '@assets/tilesets/overworld.png';
 
 // Types
 interface Point {
@@ -30,8 +30,8 @@ const GAME_CONSTANTS = {
     WORLD_BOUNDS: {
         x: 0,
         y: 0,
-        width: 800,
-        height: 600
+        width: 32 * 30, // 30 tiles wide
+        height: 32 * 20  // 20 tiles high
     }
 } as const;
 
@@ -83,15 +83,14 @@ export class Game {
     private initializeTileMap(): void {
         this.tileMap = new TileMap(
             tileset,
-            Math.ceil(GAME_CONSTANTS.WORLD_BOUNDS.width / GAME_CONSTANTS.PLAYER_SIZE),
-            Math.ceil(GAME_CONSTANTS.WORLD_BOUNDS.height / GAME_CONSTANTS.PLAYER_SIZE)
+            30, // Map width from TMX
+            20  // Map height from TMX
         );
         this.gameContainer.addChild(this.tileMap.getContainer());
-        this.setupInitialMap();
     }
 
     private initializeGameObjects(): void {
-        // Initialize player at center of world
+        // Initialize player at a walkable position
         this.player = new Player(
             GAME_CONSTANTS.WORLD_BOUNDS.width / 2,
             GAME_CONSTANTS.WORLD_BOUNDS.height / 2
@@ -240,58 +239,14 @@ export class Game {
     }
 
     private setupInitialMap(): void {
-        const mapWidth = Math.ceil(GAME_CONSTANTS.WORLD_BOUNDS.width / GAME_CONSTANTS.PLAYER_SIZE);
-        const mapHeight = Math.ceil(GAME_CONSTANTS.WORLD_BOUNDS.height / GAME_CONSTANTS.PLAYER_SIZE);
-
-        // Fill with grass tiles
-        for (let y = 0; y < mapHeight; y++) {
-            for (let x = 0; x < mapWidth; x++) {
-                const grassType = Math.random() < 0.33 ? 'GRASS_1' : 
-                                Math.random() < 0.5 ? 'GRASS_2' : 'GRASS_3';
-                this.tileMap.setTileByType(x, y, grassType);
-            }
-        }
-
-        this.addBoulders(mapWidth, mapHeight);
-        this.createCenterPaths(mapWidth, mapHeight);
+        // Remove this method as we're now loading from TMX
     }
 
-    private addBoulders(mapWidth: number, mapHeight: number): void {
-        const numBoulders = Math.floor((mapWidth * mapHeight) * 0.05); // 5% of tiles
-        for (let i = 0; i < numBoulders; i++) {
-            const x = Math.floor(Math.random() * mapWidth);
-            const y = Math.floor(Math.random() * mapHeight);
-            const boulderType = Math.random() < 0.5 ? 'BOULDER_1' : 'BOULDER_2';
-            
-            // Don't place boulders in the center path
-            if (Math.abs(x - mapWidth/2) > 2 && Math.abs(y - mapHeight/2) > 2) {
-                this.tileMap.setTileByType(x, y, boulderType);
-            }
-        }
+    private addBoulders(): void {
+        // Remove this method as we're now loading from TMX
     }
 
-    private createCenterPaths(mapWidth: number, mapHeight: number): void {
-        const centerX = Math.floor(mapWidth / 2);
-        const centerY = Math.floor(mapHeight / 2);
-        
-        // Create horizontal path
-        for (let x = 0; x < mapWidth; x++) {
-            for (let offset = -1; offset <= 1; offset++) {
-                const y = centerY + offset;
-                if (y >= 0 && y < mapHeight) {
-                    this.tileMap.setTileByType(x, y, 'GRASS_1');
-                }
-            }
-        }
-
-        // Create vertical path
-        for (let y = 0; y < mapHeight; y++) {
-            for (let offset = -1; offset <= 1; offset++) {
-                const x = centerX + offset;
-                if (x >= 0 && x < mapWidth) {
-                    this.tileMap.setTileByType(x, y, 'GRASS_1');
-                }
-            }
-        }
+    private createCenterPaths(): void {
+        // Remove this method as we're now loading from TMX
     }
 } 
