@@ -2,6 +2,7 @@ import * as PIXI from 'pixi.js';
 import { TilesetDefinition } from '../types/tiles';
 import { tilesetConfig } from '../config/tileset';
 import map1Data from '@assets/tilesets/map1.tmx';
+import overworld from '@assets/tilesets/overworld.tmx';
 
 interface TmxLayer {
     data: number[];
@@ -18,8 +19,10 @@ export class TileMap {
     private layers: PIXI.Container[] = [];
     private debugMode: boolean = false;
     private verboseMode: boolean = false;
+    private overworld: TileSet;
 
     constructor(tilesetPath: string, mapWidth: number, mapHeight: number) {
+        this.overworld = new TileSet(overworld);
         this.container = new PIXI.Container();
         this.config = tilesetConfig;
         this.tileSize = this.config.tileSize;
@@ -102,7 +105,7 @@ export class TileMap {
             }
 
             // Check if the tile has the canWalk property
-            const tileElement = this.getTileElement(tileId);
+            const tileElement = this.overworld.getElement(tileId);
             if (tileElement) {
                 const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
                 if (canWalkProperty && canWalkProperty.getAttribute('value') === 'true') {
@@ -168,12 +171,6 @@ export class TileMap {
         return true;
     }
 
-    private getTileElement(tileId: number): Element | null {
-        const parser = new DOMParser();
-        const tmx = parser.parseFromString(map1Data, 'text/xml');
-        return tmx.querySelector(`tile[id="${tileId}"]`);
-    }
-
     public setDebugMode(enabled: boolean): void {
         this.debugMode = enabled;
     }
@@ -194,3 +191,16 @@ export class TileMap {
         return this.tiles.length * this.tileSize || 0;
     }
 } 
+
+class TileSet {
+    tmx: Document;
+
+    constructor(file: string) {
+        const parser = new DOMParser();
+        this.tmx = parser.parseFromString(file, 'text/xml');
+    }
+
+    getElement(id: number) {
+        return this.tmx.querySelector(`tile[id="${id}"]`);
+    }
+}
