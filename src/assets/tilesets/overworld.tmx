@@ -1,11 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.11.2" name="pokemon" tilewidth="32" tileheight="32" tilecount="3000" columns="8">
  <image source="//wsl.localhost/Ubuntu/home/iadams-ubuntu/source/isaac/pokemon-world/src/assets/tilesets/tileset.png" width="256" height="12000"/>
- <tile id="9" type="grass_1"/>
- <tile id="10" type="grass_2"/>
+ 
  <tile id="24" type="boulder_1"/>
  <tile id="25" type="boulder_2"/>
- <tile id="26" type="grass_3"/>
+
+<tile id="9" type="grass_1">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="10" type="grass_2">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="11" type="grass_3">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="26" type="grass_4">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+
  <tile id="104" type="PokemonCenter"/>
  <tile id="105" type="PokemonCenter"/>
  <tile id="106" type="PokemonCenter"/>
@@ -31,4 +51,51 @@
  <tile id="138" type="PokemonCenter"/>
  <tile id="139" type="PokemonCenter"/>
  <tile id="140" type="PokemonCenter"/>
+ 
+ <tile id="2428" type="path-stone-1">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2429" type="path-stone-2">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2430" type="path-stone-3">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2431" type="path-stone-4">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2437" type="path-stone-5">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2438" type="path-stone-6">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2439" type="path-stone-7">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2445" type="path-stone-8">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+ <tile id="2446" type="path-stone-9">
+  <properties>
+   <property name="canWalk" type="bool" value="true"/>
+  </properties>
+ </tile>
+
 </tileset>

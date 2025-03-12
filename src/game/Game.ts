@@ -75,6 +75,7 @@ export class Game {
                 this.debugMode = !this.debugMode;
                 this.debugGraphics.visible = this.debugMode;
                 this.pc.setDebugMode(this.debugMode);
+                this.tileMap.setDebugMode(this.debugMode);
                 console.log('Debug mode:', this.debugMode ? 'enabled' : 'disabled');
             }
         });
