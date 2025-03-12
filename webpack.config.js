@@ -1,6 +1,7 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const webpack = require("webpack");
+require("dotenv").config(); // Load .env file
 
 module.exports = (env, argv) => ({
    mode: argv.mode || "development",
@@ -28,7 +29,8 @@ module.exports = (env, argv) => ({
    resolve: {
       extensions: [".tsx", ".ts", ".js"],
       alias: {
-         "@assets": path.resolve(__dirname, "src/assets")
+         "@assets": path.resolve(__dirname, "src/assets"),
+         "@config": path.resolve(__dirname, "src/config")
       }
    },
    output: {
@@ -41,7 +43,10 @@ module.exports = (env, argv) => ({
          template: "src/index.html"
       }),
       new webpack.DefinePlugin({
-         "process.env.NODE_ENV": JSON.stringify(argv.mode || "development")
+         "process.env.NODE_ENV": JSON.stringify(argv.mode || "development"),
+         "process.env.WEBSOCKET_URL": JSON.stringify(
+            env.WEBSOCKET_URL || process.env.WEBSOCKET_URL || "ws://localhost:8080"
+         )
       })
    ],
    devServer: {

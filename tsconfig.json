@@ -1,24 +1,22 @@
 {
-  "compilerOptions": {
-    "target": "ES6",
-    "module": "ESNext",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "sourceMap": true,
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
-    ],
-    "baseUrl": ".",
-    "paths": {
-      "@assets/*": ["src/assets/*"]
-    }
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
-} 
+   "compilerOptions": {
+      "target": "ES6",
+      "module": "ESNext",
+      "moduleResolution": "node",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "sourceMap": true,
+      "typeRoots": ["./node_modules/@types", "./src/types"],
+      "baseUrl": ".",
+      "paths": {
+         "@assets/*": ["src/assets/*"],
+         "@config/*": ["src/config/*"]
+      }
+   },
+   "include": ["src/**/*"],
+   "exclude": ["node_modules"]
+}

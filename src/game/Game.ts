@@ -5,7 +5,7 @@ import { PC } from "./PC";
 import { TileMap } from "./TileMap";
 import tileset from "@assets/tilesets/overworld.png";
 import { DebugOverlay } from "./DebugOverlay";
-import config from "src/config";
+import build from "@config/build";
 
 interface Point {
    x: number;
@@ -52,7 +52,7 @@ export class Game {
       this.gameContainer = new PIXI.Container();
       this.app.stage.addChild(this.gameContainer);
 
-      this.ws = new WebSocket(config.websocket);
+      this.ws = new WebSocket(build.websocket);
       this.setupWebSocket();
 
       this.initializeGame();
