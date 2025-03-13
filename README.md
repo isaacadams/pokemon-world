@@ -1,5 +1,12 @@
 site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
 
+## Sprites / Tilesets
+
+places to look for more sprites and tilesets:
+
+- https://drive.google.com/drive/folders/17Q_B4Si4YbED5MV72EPd8MaleGLayxXM
+- https://msikma.github.io/pokesprite/overview/dex-gen7.html
+
 ## tmux
 
 | command     | description        | example                                             |
