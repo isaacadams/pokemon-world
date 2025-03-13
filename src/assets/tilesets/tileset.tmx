@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <tileset version="1.10" tiledversion="1.11.2" name="pokemon" tilewidth="32" tileheight="32" tilecount="3000" columns="8">
- <image source="//wsl.localhost/Ubuntu/home/iadams-ubuntu/source/isaac/pokemon-world/src/assets/tilesets/tileset.png" width="256" height="12000"/>
+ <image source="tileset.png" width="256" height="12000"/>
  <tile id="9" type="grass_1"/>
  <tile id="10" type="grass_2"/>
  <tile id="24" type="boulder_1"/>
