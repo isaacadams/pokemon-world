@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 
 export class PC {
    public sprite: PIXI.Sprite;
+
    private isOpen: boolean = false;
    private interface: PIXI.Container;
    private interactionZone: PIXI.Graphics;
