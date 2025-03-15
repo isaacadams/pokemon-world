@@ -6,6 +6,9 @@ export class GuestModePlugin {
    private game: Game;
    private app: PIXI.Application;
    private dialogContainer: PIXI.Container | null = null;
+   private inputText: PIXI.Text | null = null;
+   private inputValue: string = "";
+   private maxInputLength: number = 12; // Limit name length to 12 characters
 
    constructor(game: Game) {
       this.game = game;
@@ -32,98 +35,99 @@ export class GuestModePlugin {
 
       // Create a translucent overlay
       const overlay = new PIXI.Graphics();
-      overlay.beginFill(0x000000, 0.5);
+      overlay.beginFill(0x000000, 0.7); // Darker overlay for more contrast
       overlay.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
       overlay.endFill();
 
-      // Create the dialog box (Pokémon-style)
+      // Create the dialog box as a container (Pokémon-style with rounded corners)
       const dialogWidth = 320;
-      const dialogHeight = 180;
-      const dialog = new PIXI.Graphics();
-      dialog.beginFill(0xf5f5d5, 0.95); // Light beige
-      dialog.drawRect(0, 0, dialogWidth, dialogHeight);
-      dialog.endFill();
-      dialog.lineStyle(4, 0x000000, 1); // Outer black border
-      dialog.drawRect(0, 0, dialogWidth, dialogHeight);
-      dialog.lineStyle(2, 0xffffff, 1); // Inner white border
-      dialog.drawRect(2, 2, dialogWidth - 4, dialogHeight - 4);
+      const dialogHeight = 200;
+      const dialog = new PIXI.Container();
+      const dialogBg = new PIXI.Graphics();
+
+      // Background with a subtle gradient
+      dialogBg.beginFill(0xf5f5d5); // Creamier background
+      dialogBg.lineStyle(6, 0x000000, 1); // Thicker outer black border
+      dialogBg.drawRoundedRect(0, 0, dialogWidth, dialogHeight, 12);
+      dialogBg.endFill();
+      dialogBg.lineStyle(4, 0xffffff, 1); // Inner white border
+      dialogBg.drawRoundedRect(3, 3, dialogWidth - 6, dialogHeight - 6, 10);
+      dialogBg.lineStyle(2, 0x888888, 1); // Subtle gray inner outline for depth
+      dialogBg.drawRoundedRect(5, 5, dialogWidth - 10, dialogHeight - 10, 8);
+      dialogBg.beginFill(0xe0e0e0, 0.2); // Slight overlay for gradient effect
+      dialogBg.drawRoundedRect(5, 5, dialogWidth - 10, dialogHeight - 10, 8);
+      dialogBg.endFill();
+
+      dialog.addChild(dialogBg);
       dialog.x = (this.app.screen.width - dialogWidth) / 2;
       dialog.y = (this.app.screen.height - dialogHeight) / 2;
 
-      // Add title text
-      const title = new PIXI.Text("Guest Mode", {
-         fontFamily: "Press Start 2P",
-         fontSize: 20,
-         fill: 0x000000,
-         align: "center",
-         dropShadow: true,
-         dropShadowColor: 0xffffff,
-         dropShadowDistance: 2,
-         dropShadowAlpha: 0.5
-      });
-      title.anchor.set(0.5);
-      title.x = dialogWidth / 2;
-      title.y = 30;
+      // Create a text input field (simulated with PIXI.Text and a background)
+      const inputBg = new PIXI.Graphics();
+      inputBg.beginFill(0xffffff); // White background for input
+      inputBg.lineStyle(2, 0x000000, 1); // Black border
+      inputBg.drawRoundedRect(0, 0, 200, 30, 6);
+      inputBg.endFill();
+      inputBg.x = (dialogWidth - 200) / 2;
+      inputBg.y = 110;
+      dialog.addChild(inputBg);
 
-      // Add instruction text
-      const instruction = new PIXI.Text("Enter your name:", {
+      // Simulated input text
+      this.inputText = new PIXI.Text(this.inputValue || "Enter name", {
          fontFamily: "Press Start 2P",
-         fontSize: 12,
-         fill: 0x000000,
-         align: "center",
-         dropShadow: true,
-         dropShadowColor: 0xffffff,
-         dropShadowDistance: 1,
-         dropShadowAlpha: 0.5
+         fontSize: 14,
+         fill: this.inputValue ? 0x000000 : 0x888888,
+         align: "center"
       });
-      instruction.anchor.set(0.5);
-      instruction.x = dialogWidth / 2;
-      instruction.y = 65;
-
-      // Create a DOM input field
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "Enter name";
-      input.style.position = "absolute";
-      input.style.left = `${dialog.x + 60}px`;
-      input.style.top = `${dialog.y + 85}px`;
-      input.style.width = "200px";
-      input.style.padding = "5px";
-      input.style.fontFamily = "Press Start 2P";
-      input.style.fontSize = "12px";
-      input.style.border = "2px solid #000";
-      input.style.backgroundColor = "#e0e0e0"; // Light gray to match Pokémon UI
-      input.style.color = "#000";
-      input.style.boxShadow = "inset 2px 2px 0px #888"; // Inset shadow for depth
-      document.body.appendChild(input);
+      this.inputText.anchor.set(0.5);
+      this.inputText.x = dialogWidth / 2;
+      this.inputText.y = 125;
+      dialog.addChild(this.inputText);
 
       // Create a Pokémon-style button
-      const button = document.createElement("button");
-      button.textContent = "Start Game";
-      button.style.position = "absolute";
-      button.style.left = `${dialog.x + 110}px`;
-      button.style.top = `${dialog.y + 135}px`;
-      button.style.padding = "5px 15px";
-      button.style.fontFamily = "Press Start 2P";
-      button.style.fontSize = "12px";
-      button.style.background = "linear-gradient(to bottom, #ff6666, #cc3333)"; // Gradient for Pokémon button
-      button.style.border = "2px solid #fff";
-      button.style.color = "#fff";
-      button.style.cursor = "pointer";
-      button.style.boxShadow = "2px 2px 0px #000"; // Drop shadow for depth
-      button.style.transition = "background 0.2s ease";
-      button.onmouseover = () => {
-         button.style.background = "linear-gradient(to bottom, #ff9999, #ff6666)";
-      };
-      button.onmouseout = () => {
-         button.style.background = "linear-gradient(to bottom, #ff6666, #cc3333)";
-      };
-      document.body.appendChild(button);
+      const button = new PIXI.Graphics();
+      button.beginFill(0xff4444); // Brighter red
+      button.lineStyle(2, 0xffffff, 1);
+      button.drawRoundedRect(0, 0, 120, 30, 6);
+      button.endFill();
+      button.beginFill(0xcc3333, 0.3);
+      button.drawRoundedRect(0, 0, 120, 30, 6);
+      button.endFill();
+      button.x = (dialogWidth - 120) / 2;
+      button.y = 150;
+      dialog.addChild(button);
+
+      // Button text
+      const buttonText = new PIXI.Text("Start Game", {
+         fontFamily: "Press Start 2P",
+         fontSize: 14,
+         fill: 0xffffff,
+         align: "center",
+         dropShadow: true,
+         dropShadowColor: 0x000000,
+         dropShadowDistance: 2,
+         dropShadowAlpha: 0.7
+      });
+      buttonText.anchor.set(0.5);
+      buttonText.x = 60;
+      buttonText.y = 15;
+      button.addChild(buttonText);
+
+      // Add interactivity to the button
+      button.interactive = true;
+      //button.buttonMode = true;
+      button.on("pointerover", () => {
+         button.tint = 0xff7777;
+      });
+      button.on("pointerout", () => {
+         button.tint = 0xffffff;
+      });
+      button.on("pointerdown", () => this.handleSubmit());
 
       // Create a container for the dialog
       this.dialogContainer = new PIXI.Container();
-      this.dialogContainer.addChild(overlay, dialog, title, instruction);
-      this.dialogContainer.alpha = 0; // Start invisible for fade-in
+      this.dialogContainer.addChild(overlay, dialog);
+      this.dialogContainer.alpha = 0;
       this.app.stage.addChild(this.dialogContainer);
       console.log("Dialog container added to stage");
 
@@ -139,33 +143,50 @@ export class GuestModePlugin {
          fadeIn();
       });
 
-      // Handle form submission
-      const submitName = () => {
-         const name = input.value.trim();
-         if (name) {
-            PlayerData.set(PlayerData.createDefaultData(name));
-            this.cleanupDialog(input, button);
-         }
-      };
-
-      button.onclick = submitName;
-      input.onkeyup = e => {
-         if (e.key === "Enter") submitName();
-      };
-
-      // Focus the input field
-      input.focus();
+      // Add keyboard event listeners for text input
+      this.setupKeyboardInput();
    }
 
-   private cleanupDialog(input: HTMLInputElement, button: HTMLButtonElement): void {
+   private setupKeyboardInput(): void {
+      window.addEventListener("keydown", (e: KeyboardEvent) => {
+         if (!this.inputText) return;
+
+         if (e.key === "Enter") {
+            this.handleSubmit();
+            return;
+         }
+
+         if (e.key === "Backspace") {
+            this.inputValue = this.inputValue.slice(0, -1);
+         } else if (e.key.length === 1 && this.inputValue.length < this.maxInputLength) {
+            // Allow only alphanumeric characters
+            if (/[a-zA-Z0-9]/.test(e.key)) {
+               this.inputValue += e.key;
+            }
+         }
+
+         // Update the displayed text
+         this.inputText.text = this.inputValue || "Enter name";
+         this.inputText.style.fill = this.inputValue ? 0x000000 : 0x888888; // Black for text, gray for placeholder
+      });
+   }
+
+   private handleSubmit(): void {
+      if (this.inputValue.trim()) {
+         PlayerData.set(PlayerData.createDefaultData(this.inputValue));
+         this.cleanupDialog();
+      }
+   }
+
+   private cleanupDialog(): void {
       console.log("Cleaning up dialog...");
       if (this.dialogContainer) {
          this.app.stage.removeChild(this.dialogContainer);
          this.dialogContainer.destroy({ children: true });
          this.dialogContainer = null;
       }
-      document.body.removeChild(input);
-      document.body.removeChild(button);
+      this.inputText = null;
+      this.inputValue = "";
       if (!this.app.ticker.started) {
          console.log("Resuming game loop after dialog cleanup");
          this.app.ticker.start();
