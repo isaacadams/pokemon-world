@@ -5,7 +5,8 @@
    "scripts": {
       "preinstall": "npx playwright install-deps",
       "postinstall": "npx playwright install",
-      "test:e2e": "playwright test"
+      "test:e2e": "playwright test",
+      "snapshots": "npx playwright test --update-snapshots"
    },
    "keywords": [],
    "author": "",
