@@ -1,11 +1,11 @@
 import * as PIXI from "pixi.js";
+import tileset from "@assets/tilesets/overworld.png";
+import build from "@config/build";
 import { Player } from "./Player";
 import { SpriteController } from "./SpriteController";
 import { PC } from "./PC";
 import { TileMap } from "./TileMap";
-import tileset from "@assets/tilesets/overworld.png";
 import { DebugOverlay } from "./DebugOverlay";
-import build from "@config/build";
 import { RemotePlayerManager } from "./RemotePlayersManager";
 
 interface Point {
@@ -127,6 +127,9 @@ export class Game {
    }
 
    private initializeTileMap(): void {
+      //console.log(tileset);
+      //if (new URL(tileset)) {
+      //}
       this.tileMap = new TileMap(tileset, 30, 20);
       this.gameContainer.addChild(this.tileMap.getContainer());
    }
@@ -162,9 +165,9 @@ export class Game {
       const collisionBox = this.calculateCollisionBox(nextPosition);
 
       if (collisionBox.canWalk) {
-         this.player.update(deltaTime);
+         const state = this.player.update(deltaTime);
          // Send position update to server
-         if (!!this.ws && this.ws.readyState === WebSocket.OPEN) {
+         if (state.isMoving && !!this.ws && this.ws.readyState === WebSocket.OPEN) {
             const update = JSON.stringify({
                type: "update",
                id: this.player.id,

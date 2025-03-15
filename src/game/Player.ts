@@ -48,9 +48,10 @@ export class Player {
       return { x: nextX, y: nextY };
    }
 
-   public update(delta: number): void {
+   public update(delta: number): PlayerState {
       const nextPos = this.getNextPosition(delta);
       this.controller.updatePosition(nextPos.x, nextPos.y, this.state);
+      return this.state;
    }
 
    public getBounds(): PIXI.Rectangle {
