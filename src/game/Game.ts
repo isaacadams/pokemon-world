@@ -180,6 +180,10 @@ export class Game {
       this.gameContainer.addChild(this.debugGraphics);
    }
 
+   public getPlayerPosition(): { x: number; y: number } {
+      return { x: this.player.sprite.x, y: this.player.sprite.y };
+   }
+
    private gameLoop(deltaTime: number): void {
       const nextPosition = this.player.getNextPosition(deltaTime);
       const collisionBox = this.calculateCollisionBox(nextPosition);
@@ -201,6 +205,8 @@ export class Game {
 
       this.updatePCInteraction();
       this.updateDebug(nextPosition, collisionBox);
+      // Update player position in debug overlay
+      this.debugOverlay.updatePlayerPosition(this.player.sprite.x, this.player.sprite.y);
    }
 
    private updatePCInteraction(): void {

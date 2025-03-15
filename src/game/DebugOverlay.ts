@@ -19,16 +19,14 @@ export class DebugOverlay {
       this.tileSize = tileSize;
       this.container = new PIXI.Container();
 
-      // Graphics for highlighting
       this.debugGraphics = new PIXI.Graphics();
       this.debugGraphics.visible = false;
 
-      // Text for tile IDs with a new color (e.g., yellow)
       this.debugText = new PIXI.Text("Debug Mode Off", {
          fontFamily: "Arial",
          fontSize: 16,
-         fill: 0x00ffff, // Changed from 0xffffff (white) to 0xffff00 (yellow)
-         stroke: 0x000000, // Black stroke for contrast
+         fill: 0x00ffff,
+         stroke: 0x000000,
          strokeThickness: 2
       });
       this.debugText.x = 10;
@@ -44,11 +42,12 @@ export class DebugOverlay {
 
    public update(
       collisionBox: { x: number; y: number; width: number; height: number },
-      tiles: PIXI.Sprite[][][] // 3D array of tile sprites from TileMap
+      tiles: PIXI.Sprite[][][]
    ): void {
       if (!this.debugMode) {
          this.debugGraphics.clear();
          this.debugText.text = "Debug Mode Off";
+         (window as any).debugInfo = this.debugText.text;
          return;
       }
 
@@ -81,7 +80,7 @@ export class DebugOverlay {
 
                const tileX = Math.floor(tile.texture.frame.x / this.tileSize);
                const tileY = Math.floor(tile.texture.frame.y / this.tileSize);
-               const tileId = tileY * 8 + tileX + 1; // Assumes 8 tiles wide in tileset
+               const tileId = tileY * 8 + tileX + 1;
 
                touchedTiles.push({ x, y, id: tileId });
 
@@ -103,12 +102,19 @@ export class DebugOverlay {
 
       this.debugText.text = debugInfo;
 
-      // Draw collision box
+      // Draw the yellow collision box
       this.debugGraphics.lineStyle(2, 0xffff00, 1); // Yellow
       this.debugGraphics.drawRect(collisionBox.x, collisionBox.y, collisionBox.width, collisionBox.height);
+      (window as any).debugInfo = debugInfo;
+   }
 
+   public updatePlayerPosition(x: number, y: number): void {
+      if (!this.debugMode) return;
+      const positionInfo = `Player position: (${Math.floor(x)}, ${Math.floor(y)})`;
+      this.debugText.text = positionInfo + "\n" + this.debugText.text; // Prepend player position
+      (window as any).debugInfo = this.debugText.text;
       if (this.verboseMode) {
-         console.log("Debug text set to:", debugInfo);
+         console.log("DebugOverlay player position:", positionInfo);
       }
    }
 
@@ -119,6 +125,7 @@ export class DebugOverlay {
       if (!enabled) {
          this.debugGraphics.clear();
          this.debugText.text = "Debug Mode Off";
+         (window as any).debugInfo = this.debugText.text;
       }
       if (this.verboseMode) {
          console.log(`Debug mode ${enabled ? "enabled" : "disabled"}`);
