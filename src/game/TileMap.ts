@@ -28,6 +28,10 @@ export class TileMap {
       this.tileSize = this.config.tileSize;
       this.tileset = PIXI.BaseTexture.from(tilesetPath);
 
+      //if (!this.tileset.valid) {
+      //   console.error("failed");
+      //}
+
       const parser = new DOMParser();
       const tmx = parser.parseFromString(map1Data, "text/xml");
       const layerElements = tmx.getElementsByTagName("layer");
