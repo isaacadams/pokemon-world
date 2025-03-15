@@ -43,14 +43,18 @@ export class Game {
    private ws: WebSocket;
 
    constructor() {
+      console.log("Game constructor called");
       this.app = new PIXI.Application({
          width: window.innerWidth,
          height: window.innerHeight,
-         backgroundColor: 0x000000
+         backgroundColor: 0x000000,
+         resizeTo: window
       });
+      console.log("PIXI Application created");
 
       this.gameContainer = new PIXI.Container();
       this.app.stage.addChild(this.gameContainer);
+      console.log("gameContainer added to stage");
 
       this.ws = new WebSocket(build.websocket);
       this.setupWebSocket();
@@ -58,8 +62,15 @@ export class Game {
       this.initializeGame();
       this.debugOverlay = new DebugOverlay(this.tileMap.getTileSize());
       this.gameContainer.addChild(this.debugOverlay.getContainer());
+      console.log("DebugOverlay added to gameContainer");
 
       this.setupEventListeners();
+
+      // Ensure the ticker is running
+      if (!this.app.ticker.started) {
+         console.log("Starting ticker in constructor");
+         this.app.ticker.start();
+      }
    }
 
    private setupWebSocket(): void {
@@ -326,6 +337,14 @@ export class Game {
    }
 
    public start(): void {
-      document.getElementById("game-container")?.appendChild(this.app.view as HTMLCanvasElement);
+      const gameContainer = document.getElementById("game-container");
+      if (gameContainer) {
+         gameContainer.appendChild(this.app.view as HTMLCanvasElement);
+         console.log("PixiJS canvas appended to game-container");
+         this.app.renderer.resize(gameContainer.clientWidth, gameContainer.clientHeight);
+         console.log("Renderer resized to container dimensions");
+      } else {
+         console.error("game-container element not found in DOM");
+      }
    }
 }

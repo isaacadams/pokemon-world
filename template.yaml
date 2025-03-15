@@ -1,133 +1,141 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: SAM template for deploying a WebSocket server on EC2 and a static game site on S3
 
 Parameters:
-  EnvironmentName:
-    Type: String
-    Default: production
-    Description: Environment name (e.g., dev, production)
-  VpcId:
-    Type: AWS::EC2::VPC::Id
-    Description: ID of the VPC to deploy the EC2 instance into (e.g., vpc-12345678)
-  SubnetId:
-    Type: AWS::EC2::Subnet::Id
-    Description: ID of a subnet within the VPC (e.g., subnet-12345678)
-  KeyPairName:
-    Type: String
-    Description: Name of an existing EC2 key pair (e.g., my-key-pair)
-    Default: my-key-pair
+   EnvironmentName:
+      Type: String
+      Default: dev
+      Description: Environment name (e.g., dev, production)
+   VpcId:
+      Type: AWS::EC2::VPC::Id
+      Description: ID of the VPC to deploy the EC2 instance into (e.g., vpc-12345678)
+   SubnetId:
+      Type: AWS::EC2::Subnet::Id
+      Description: ID of a subnet within the VPC (e.g., subnet-12345678)
+   KeyPairName:
+      Type: String
+      Description: Name of an existing EC2 key pair (e.g., my-key-pair)
+      Default: my-key-pair
 
 Resources:
-  GameBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub my-game-client-${EnvironmentName}-${AWS::AccountId}
-      WebsiteConfiguration:
-        IndexDocument: index.html
-        ErrorDocument: index.html
-      CorsConfiguration:
-        CorsRules:
-          - AllowedHeaders: ['*']
-            AllowedMethods: [GET]
-            AllowedOrigins: ['*']
-            MaxAge: 3000
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        IgnorePublicAcls: false
-        BlockPublicPolicy: false
-        RestrictPublicBuckets: false
+   GameBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+         BucketName: !Sub my-game-client-${EnvironmentName}-${AWS::AccountId}
+         WebsiteConfiguration:
+            IndexDocument: index.html
+            ErrorDocument: index.html
+         CorsConfiguration:
+            CorsRules:
+               - AllowedHeaders: ["*"]
+                 AllowedMethods: [GET]
+                 AllowedOrigins: ["*"]
+                 MaxAge: 3000
+         OwnershipControls:
+            Rules:
+               - ObjectOwnership: BucketOwnerEnforced
+         PublicAccessBlockConfiguration:
+            BlockPublicAcls: false
+            IgnorePublicAcls: false
+            BlockPublicPolicy: false
+            RestrictPublicBuckets: false
 
-  GameBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref GameBucket
-      PolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal: '*'
-            Action: s3:GetObject
-            Resource: !Sub arn:aws:s3:::${GameBucket}/*
+   GameBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+         Bucket: !Ref GameBucket
+         PolicyDocument:
+            Statement:
+               - Effect: Allow
+                 Principal: "*"
+                 Action: s3:GetObject
+                 Resource: !Sub arn:aws:s3:::${GameBucket}/*
 
-  ServerArtifactBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub my-game-server-artifacts-${EnvironmentName}-${AWS::AccountId}
-      OwnershipControls:
-        Rules:
-          - ObjectOwnership: BucketOwnerEnforced
+   ServerArtifactBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+         BucketName: !Sub my-game-server-artifacts-${EnvironmentName}-${AWS::AccountId}
+         OwnershipControls:
+            Rules:
+               - ObjectOwnership: BucketOwnerEnforced
 
-  WebSocketServerInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      InstanceType: t2.micro
-      ImageId: ami-0ebfd941bbafe70c6
-      KeyName: !Ref KeyPairName
-      SecurityGroupIds: [!Ref WebSocketSecurityGroup]
-      SubnetId: !Ref SubnetId
-      Tags:
-        - Key: Name
-          Value: WebSocketServer
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          yum update -y
-          curl -sL https://rpm.nodesource.com/setup_18.x | bash -
-          yum install -y nodejs
+   WebSocketServerInstance:
+      Type: AWS::EC2::Instance
+      Properties:
+         InstanceType: t2.micro
+         ImageId: ami-0ebfd941bbafe70c6
+         KeyName: !Ref KeyPairName
+         SecurityGroupIds: [!Ref WebSocketSecurityGroup]
+         SubnetId: !Ref SubnetId
+         Tags:
+            - Key: Name
+              Value: WebSocketServer
+         UserData:
+            Fn::Base64: !Sub |
+               #!/bin/bash
+               dnf update -y
+               yum update -y
 
-          dnf install -y firewalld
-          systemctl start firewalld
-          firewall-cmd --add-port=8080/tcp --permanent
-          firewall-cmd --reload
+               curl -sL https://rpm.nodesource.com/setup_18.x | bash -
+               yum install -y nodejs
 
-          dnf install -y tmux
-          
-          mkdir -p /home/ec2-user/websocket-server
-          cd /home/ec2-user/websocket-server
-          aws s3 cp s3://${ServerArtifactBucket}/server.js .
-          npm init -y
-          npm install ws
+               # need to ensure that this rule is also added to the security group
+               dnf install -y firewalld
+               systemctl start firewalld
+               firewall-cmd --add-port=8080/tcp --permanent
+               firewall-cmd --add-port=3000/tcp --permanent
+               firewall-cmd --reload
 
-          tmux new-session -d -s pokemon_world "node server.js"
+               dnf install tmux -y
 
-  # Elastic IP for WebSocket Server
-  WebSocketServerEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: vpc
+               mkdir -p /home/ec2-user/websocket-server
+               cd /home/ec2-user/websocket-server
+               aws s3 cp s3://${ServerArtifactBucket}/server.js .
+               npm init -y
+               npm install ws
 
-  # Associate EIP with EC2 Instance
-  WebSocketServerEIPAssociation:
-    Type: AWS::EC2::EIPAssociation
-    Properties:
-      InstanceId: !Ref WebSocketServerInstance
-      EIP: !Ref WebSocketServerEIP
+               tmux new-session -d -s pokemon_world "node server.js"
 
-  WebSocketSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow WebSocket traffic on port 8080
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
-          FromPort: 22
-          ToPort: 22
-          CidrIp: 0.0.0.0/0
+   # Elastic IP for WebSocket Server
+   WebSocketServerEIP:
+      Type: AWS::EC2::EIP
+      Properties:
+         Domain: vpc
+
+   # Associate EIP with EC2 Instance
+   WebSocketServerEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+         InstanceId: !Ref WebSocketServerInstance
+         EIP: !Ref WebSocketServerEIP
+
+   WebSocketSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+         GroupDescription: Allow WebSocket traffic on port 8080
+         VpcId: !Ref VpcId
+         SecurityGroupIngress:
+            - IpProtocol: tcp
+              FromPort: 8080
+              ToPort: 8080
+              CidrIp: 0.0.0.0/0
+            - IpProtocol: tcp
+              FromPort: 3000
+              ToPort: 3000
+              CidrIp: 0.0.0.0/0
+            - IpProtocol: tcp
+              FromPort: 22
+              ToPort: 22
+              CidrIp: 0.0.0.0/0
 
 Outputs:
-  GameSiteUrl:
-    Description: URL of the static game site
-    Value: !GetAtt GameBucket.WebsiteURL
-  WebSocketServerUrl:
-    Description: URL of the WebSocket server
-    Value: !Sub ws://${WebSocketServerEIP.PublicIp}:8080 # Use EIP’s public IP
-  EC2InstanceId:
-    Description: ID of the EC2 instance running the WebSocket server
-    Value: !Ref WebSocketServerInstance
+   GameSiteUrl:
+      Description: URL of the static game site
+      Value: !GetAtt GameBucket.WebsiteURL
+   WebSocketServerUrl:
+      Description: URL of the WebSocket server
+      Value: !Sub ws://${WebSocketServerEIP.PublicIp}:8080 # Use EIP’s public IP
+   EC2InstanceId:
+      Description: ID of the EC2 instance running the WebSocket server
+      Value: !Ref WebSocketServerInstance

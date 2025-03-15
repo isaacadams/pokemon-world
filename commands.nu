@@ -13,6 +13,11 @@ def "main upload client" [] {
 
 def "main upload server" [] {
     aws s3 cp server/server.js s3://my-game-server-artifacts-dev-389616631340/
+    #scp -r auth pokemon-world:/home/ec2-user/auth
+    rsync -avz --exclude 'node_modules' auth/ pokemon-world:/home/ec2-user/auth
+    ssh pokemon-world "cd /home/ec2-user/auth && npm i && mv .env.production .env && tmux new-session -d -s auth 'node server.js'"
+    #firewall-cmd --add-port=3000/tcp --permanent
+    #firewall-cmd --reload
 }
 
 def "main env" [] {

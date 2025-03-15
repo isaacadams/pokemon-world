@@ -1,0 +1,19 @@
+display_information:
+   name: Pokemon World
+   description: Enter the world of Pokemon in your browser
+   background_color: "#000000"
+
+oauth_config:
+   redirect_urls:
+      - http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com/callback.html
+      - http://localhost:9000/callback.html
+   scopes:
+      user:
+         - identity.basic # Minimum for user ID and name
+         - identity.email # Optional: Get user email
+         - identity.avatar # Optional: Get user avatar
+
+settings:
+   org_deploy_enabled: false
+   socket_mode_enabled: false
+   token_rotation_enabled: false

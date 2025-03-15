@@ -1,0 +1,136 @@
+*,
+*::before,
+*::after {
+   box-sizing: border-box;
+}
+
+/* 2. Remove default margin */
+* {
+   margin: 0;
+}
+
+body {
+   /* 3. Add accessible line-height */
+   line-height: 1.5;
+   /* 4. Improve text rendering */
+   -webkit-font-smoothing: antialiased;
+}
+
+/* 5. Improve media defaults */
+img,
+picture,
+video,
+canvas,
+svg {
+   display: block;
+   max-width: 100%;
+}
+
+/* 6. Inherit fonts for form controls */
+input,
+button,
+textarea,
+select {
+   font: inherit;
+}
+
+/* 7. Avoid text overflows */
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+   overflow-wrap: break-word;
+}
+
+/* 8. Improve line wrapping */
+p {
+   text-wrap: pretty;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+   text-wrap: balance;
+}
+
+/*
+   9. Create a root stacking context
+ */
+#root,
+#__next {
+   isolation: isolate;
+}
+
+* {
+   margin: 0;
+   padding: 0;
+   box-sizing: border-box;
+}
+
+html,
+body {
+   height: 100%;
+   width: 100%;
+   background-color: #000;
+   font-family: "Press Start 2P", cursive;
+   color: #fff;
+   overflow: hidden; /* No scrolling */
+}
+
+h1 {
+   font-size: 2rem;
+   margin-bottom: 40px;
+   text-shadow: 2px 2px #000;
+   animation: fadeIn 1s ease-in;
+}
+
+button {
+   font-family: "Press Start 2P", cursive;
+   padding: 15px 30px;
+   font-size: 1rem;
+   color: #fff;
+   background-color: #ff0000;
+   border: 4px solid #fff;
+   border-radius: 0;
+   cursor: pointer;
+   margin: 10px 0;
+   transition: background-color 0.2s ease;
+}
+
+button:hover {
+   background-color: #cc0000;
+}
+
+@keyframes fadeIn {
+   from {
+      opacity: 0;
+   }
+   to {
+      opacity: 1;
+   }
+}
+
+/* Updated game container */
+#game-container {
+   width: 100%; /* Full width of parent */
+   height: 100vh; /* Full viewport height */
+   max-width: none; /* Remove width cap */
+   background-color: #fff;
+   border: 1px solid #ddd;
+   border-radius: 4px;
+   overflow: visible; /* Allow map to extend if needed */
+   position: relative; /* Ensure canvas positions correctly */
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+   button,
+   #game-container {
+      height: 80vh;
+   } /* Slightly smaller on mobile */
+}
