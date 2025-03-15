@@ -1,5 +1,4 @@
 import * as PIXI from "pixi.js";
-import tileset from "@assets/tilesets/overworld.png";
 import build from "@config/build";
 import { Player } from "./Player";
 import { SpriteController } from "./SpriteController";
@@ -130,7 +129,8 @@ export class Game {
       //console.log(tileset);
       //if (new URL(tileset)) {
       //}
-      this.tileMap = new TileMap(tileset, 30, 20);
+
+      this.tileMap = TileMap.overworld();
       this.gameContainer.addChild(this.tileMap.getContainer());
    }
 

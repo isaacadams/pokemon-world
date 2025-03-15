@@ -1,8 +1,7 @@
 import * as PIXI from "pixi.js";
-import { TilesetDefinition } from "../types/tiles";
-import { tilesetConfig } from "../config/tileset";
 import map1Data from "@assets/tilesets/map1.tmx";
-import overworld from "@assets/tilesets/overworld.tmx";
+import tmxOverworld from "@assets/tilesets/overworld.tmx";
+import pngOverworld from "@assets/tilesets/overworld.png";
 
 interface TmxLayer {
    data: number[];
@@ -15,18 +14,21 @@ export class TileMap {
    private tileSize: number;
    private tileset: PIXI.BaseTexture;
    private tiles: PIXI.Sprite[][][] = [];
-   private config: TilesetDefinition;
+
    private layers: PIXI.Container[] = [];
    private debugMode: boolean = false;
    private verboseMode: boolean = false;
    private overworld: TileSet;
 
-   constructor(tilesetPath: string, mapWidth: number, mapHeight: number) {
-      this.overworld = new TileSet(overworld);
+   static overworld() {
+      return new TileMap(pngOverworld, tmxOverworld);
+   }
+
+   constructor(pngPath: string, tmxPath: string) {
+      this.overworld = new TileSet(tmxPath);
       this.container = new PIXI.Container();
-      this.config = tilesetConfig;
-      this.tileSize = this.config.tileSize;
-      this.tileset = PIXI.BaseTexture.from(tilesetPath);
+      this.tileSize = 32;
+      this.tileset = PIXI.BaseTexture.from(pngPath);
 
       //if (!this.tileset.valid) {
       //   console.error("failed");
