@@ -3,15 +3,8 @@ import PlayerData from "./game/PlayerData";
 
 window.onload = async () => {
    try {
-      const player = PlayerData.check();
-      if (!!player && player.ok) {
-         window.location.href = "/game.html";
-         return;
-      }
-
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get("code");
-
       if (!!code) {
          // Create an AbortController to timeout the fetch request
          const controller = new AbortController();
