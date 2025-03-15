@@ -1,6 +1,17 @@
 $env.AWS_PROFILE = "spot-dev"
 
-def main [] {}
+def main [] {
+    try {
+        tmux kill-server
+    } catch {}
+
+    # start auth server
+    tmux new-session -d -s auth "cd auth && npm i && node server.js"
+    # start websocket server
+    tmux new-session -d -s wss "cd server && npm i && node server.js"
+    # start client
+    tmux new-session -d -s client "npm i && npm run dev"
+}
 
 def "main deploy" [] {
     sam deploy
@@ -29,4 +40,15 @@ def "main env" [] {
 
     $"WEBSOCKET_URL=($outputs.WebSocketServerUrl)" | save --append .env
     print $"game can be played @ ($outputs.GameSiteUrl)"
+}
+
+def "main resources" [] {
+    let outputs = sam list resources --stack-name pokemon-world --output json --region us-east-1 
+        | from json 
+        | select LogicalResourceId PhysicalResourceId 
+        | update LogicalResourceId { |r| $r.LogicalResourceId | str snake-case }
+        | transpose -r 
+        | into record
+
+    $outputs
 }
