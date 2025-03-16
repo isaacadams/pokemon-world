@@ -6,11 +6,12 @@ def main [] {
     } catch {}
 
     # start auth server
-    tmux new-session -d -s auth "cd auth && npm i && node server.js"
+    pnpm i
+    tmux new-session -d -s auth "cd apps/auth && node server.js"
     # start websocket server
-    tmux new-session -d -s wss "cd server && npm i && node server.js"
+    tmux new-session -d -s wss "cd apps/server && node server.js"
     # start client
-    tmux new-session -d -s client "npm i && npm run dev"
+    tmux new-session -d -s client "cd apps/client && npm run dev"
 }
 
 def "main deploy" [] {
@@ -51,4 +52,15 @@ def "main resources" [] {
         | into record
 
     $outputs
+}
+
+def "main linux dependencies" [] {
+    sudo apt update
+    sudo apt install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpng-dev pkg-config libuuid1 uuid-dev libfreetype6-dev librsvg2-dev libgdk-pixbuf2.0-dev
+}
+
+def "main dst" [] {
+    docker build -t pokemon-world -f dockerfile.dst .
+    #docker run -v $(pwd):/app pokemon-world
+    docker run pokemon-world
 }

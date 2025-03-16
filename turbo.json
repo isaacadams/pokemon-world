@@ -1,0 +1,22 @@
+{
+   "tasks": {
+      "clean": {
+         "cache": false
+      },
+      "build": {
+         "dependsOn": ["clean", "^build"],
+         "outputs": ["dist/**"]
+      },
+      "test": {
+         "dependsOn": [],
+         "outputs": []
+      },
+      "test:watch": {
+         "cache": false,
+         "persistent": true
+      },
+      "lint": {
+         "outputs": []
+      }
+   }
+}
