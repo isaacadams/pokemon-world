@@ -1,35 +1,31 @@
 {
-   "name": "pokemon-world",
-   "version": "1.0.0",
+   "name": "@pokemon-world/root",
+   "private": true,
    "description": "A Pokemon exploration web app using PixiJS",
-   "main": "dist/index.js",
-   "scripts": {
-      "start": "webpack serve --open",
-      "build": "webpack --mode production",
-      "dev": "webpack serve --mode development",
-      "format": "prettier -w **/*.{ts,js}"
-   },
-   "keywords": [
-      "pokemon",
-      "pixijs",
-      "game"
-   ],
    "author": "Isaac Adams",
    "license": "ISC",
-   "devDependencies": {
-      "css-loader": "^7.1.2",
-      "dotenv": "^16.4.7",
-      "html-webpack-plugin": "5.6.3",
-      "pixi.js": "^7.4.0",
-      "prettier": "^3.5.3",
-      "style-loader": "^4.0.0",
-      "ts-loader": "9.5.2",
-      "typescript": "5.8.2",
-      "webpack": "5.98.0",
-      "webpack-cli": "6.0.1",
-      "webpack-dev-server": "5.2.0"
+   "packageManager": "pnpm@10.6.3+sha512.bb45e34d50a9a76e858a95837301bfb6bd6d35aea2c5d52094fa497a467c43f5c440103ce2511e9e0a2f89c3d6071baac3358fc68ac6fb75e2ceb3d2736065e6",
+   "scripts": {
+      "fresh-install": "find . -name 'node_modules' -type d -exec rm -rf {} + && rm pnpm-lock.yaml && pnpm install",
+      "clean": "turbo run clean",
+      "build": "turbo run build",
+      "test": "turbo run test",
+      "format": "prettier -w **/*.{ts,js}",
+      "start:dst": "ts-node -r tsconfig-paths/register src/dst/index.ts"
    },
-   "dependencies": {
-      "zod": "^3.24.2"
+   "devDependencies": {
+      "@types/jest": "29.5.14",
+      "@types/node": "^22.13.10",
+      "jest": "^29.7.0",
+      "pixi.js": "7.4.0",
+      "prettier": "^3.5.3",
+      "turbo": "^2.4.4",
+      "typescript": "^5.8.2"
+   },
+   "pnpm": {
+      "overrides": {
+         "pixi.js": "7.4.0",
+         "zod": "3.24.2"
+      }
    }
 }

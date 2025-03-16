@@ -1,0 +1,37 @@
+{
+   "name": "@pokemon-world/game",
+   "version": "1.0.0",
+   "description": "A Pokemon exploration web app using PixiJS",
+   "main": "dist/index.js",
+   "scripts": {
+      "start": "webpack serve --open",
+      "build": "webpack --mode production",
+      "dev": "webpack serve --mode development",
+      "start:dst": "ts-node -r tsconfig-paths/register src/dst/index.ts"
+   },
+   "keywords": [
+      "pokemon",
+      "pixijs",
+      "game"
+   ],
+   "author": "Isaac Adams",
+   "license": "ISC",
+   "devDependencies": {
+      "@types/seedrandom": "^3.0.8",
+      "css-loader": "^7.1.2",
+      "dotenv": "^16.4.7",
+      "html-webpack-plugin": "5.6.3",
+      "pixi.js": "^7.4.0",
+      "seedrandom": "^3.0.5",
+      "style-loader": "^4.0.0",
+      "ts-loader": "9.5.2",
+      "ts-node": "^10.9.2",
+      "tsconfig-paths": "^4.2.0",
+      "webpack": "5.98.0",
+      "webpack-cli": "6.0.1",
+      "webpack-dev-server": "5.2.0"
+   },
+   "dependencies": {
+      "zod": "^3.24.2"
+   }
+}

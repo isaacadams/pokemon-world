@@ -2,6 +2,7 @@ import * as PIXI from "pixi.js";
 
 export class PC {
    public sprite: PIXI.Sprite;
+
    private isOpen: boolean = false;
    private interface: PIXI.Container;
    private interactionZone: PIXI.Graphics;
@@ -64,19 +65,6 @@ export class PC {
       title.x = 20;
       title.y = 20;
       this.interface.addChild(title);
-
-      // Add interaction hint text
-      const hintStyle = new PIXI.TextStyle({
-         fontFamily: "Arial",
-         fontSize: 12,
-         fill: "white",
-         stroke: "black",
-         strokeThickness: 2
-      });
-      const hint = new PIXI.Text("Press E to interact", hintStyle);
-      hint.x = -hint.width / 2;
-      hint.y = -40;
-      this.sprite.addChild(hint);
 
       // Center the interface on screen
       this.interface.x = (window.innerWidth - this.interface.width) / 2;

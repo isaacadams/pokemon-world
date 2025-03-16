@@ -6,3 +6,4 @@
 !.env.example
 test-results/
 playwright-report/
+.turbo

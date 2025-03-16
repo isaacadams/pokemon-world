@@ -1,11 +1,11 @@
 import * as PIXI from "pixi.js";
+import build from "@config/build";
 import { Player } from "./Player";
-import { AnimatedCharacter } from "./AnimatedCharacter";
+import { SpriteController } from "./SpriteController";
 import { PC } from "./PC";
 import { TileMap } from "./TileMap";
-import tileset from "@assets/tilesets/overworld.png";
 import { DebugOverlay } from "./DebugOverlay";
-import build from "@config/build";
+import { RemotePlayerManager } from "./RemotePlayersManager";
 
 interface Point {
    x: number;
@@ -32,7 +32,7 @@ const GAME_CONSTANTS = {
 export class Game {
    private app: PIXI.Application;
    private player!: Player;
-   private remotePlayers: Map<string, AnimatedCharacter> = new Map();
+
    private pc!: PC;
    private gameContainer: PIXI.Container;
    private tileMap!: TileMap;
@@ -40,7 +40,7 @@ export class Game {
    private debugMode: boolean = false;
    private verboseMode: boolean = false;
    private debugOverlay: DebugOverlay;
-   private ws: WebSocket;
+   private ws?: WebSocket;
 
    constructor() {
       console.log("Game constructor called");
@@ -56,49 +56,40 @@ export class Game {
       this.app.stage.addChild(this.gameContainer);
       console.log("gameContainer added to stage");
 
-      this.ws = new WebSocket(build.websocket);
-      this.setupWebSocket();
-
       this.initializeGame();
       this.debugOverlay = new DebugOverlay(this.tileMap.getTileSize());
       this.gameContainer.addChild(this.debugOverlay.getContainer());
       console.log("DebugOverlay added to gameContainer");
-
-      this.setupEventListeners();
-
-      // Ensure the ticker is running
-      if (!this.app.ticker.started) {
-         console.log("Starting ticker in constructor");
-         this.app.ticker.start();
-      }
    }
 
-   private setupWebSocket(): void {
+   setupWebSocket(controller: SpriteController): void {
+      const manager = new RemotePlayerManager(this.gameContainer, controller);
+      this.ws = new WebSocket(build.websocket);
       this.ws.onopen = () => console.log("Connected to WebSocket server");
 
       this.ws.onmessage = event => {
          const data = JSON.parse(event.data);
+
          switch (data.type) {
             case "init":
                this.player.id = data.id;
-               this.player.character.id = data.id;
                console.log(`Assigned ID: ${this.player.id}`);
                break;
             case "players":
-               for (const [id, pos] of Object.entries(
-                  data.players as { [key: string]: { x: number; y: number } }
+               for (const [id, state] of Object.entries(
+                  data.players as { [key: string]: { id: string; position: { x: number; y: number } } }
                )) {
-                  if (id !== this.player.id) this.addRemotePlayer(id, pos.x, pos.y);
+                  if (id !== this.player.id) manager.add(id, state.position.x, state.position.y);
                }
                break;
             case "join":
-               if (data.id !== this.player.id) this.addRemotePlayer(data.id, data.x, data.y);
+               if (data.id !== this.player.id) manager.add(data.id, data.x, data.y);
                break;
             case "update":
-               if (data.id !== this.player.id) this.updateRemotePlayer(data.id, data.x, data.y);
+               if (data.id !== this.player.id) manager.update(data.id, data.x, data.y);
                break;
             case "leave":
-               this.removeRemotePlayer(data.id);
+               manager.remove(data.id);
                break;
          }
       };
@@ -106,34 +97,9 @@ export class Game {
       this.ws.onclose = () => console.log("Disconnected from WebSocket server");
    }
 
-   private addRemotePlayer(id: string, x: number, y: number): void {
-      if (this.remotePlayers.has(id)) return;
-      const character = new AnimatedCharacter(id, x, y);
-      character.sprite.tint = 0x0000ff; // Blue for remote players
-      this.gameContainer.addChild(character.sprite);
-      this.remotePlayers.set(id, character);
-      console.log(`Added remote player ${id} at (${x}, ${y})`);
-   }
-
-   private updateRemotePlayer(id: string, x: number, y: number): void {
-      const character = this.remotePlayers.get(id);
-      if (character) {
-         character.updatePosition(x, y);
-      }
-   }
-
-   private removeRemotePlayer(id: string): void {
-      const character = this.remotePlayers.get(id);
-      if (character) {
-         this.gameContainer.removeChild(character.sprite);
-         this.remotePlayers.delete(id);
-         console.log(`Removed remote player ${id}`);
-      }
-   }
-
    private initializeGame(): void {
       this.initializeTileMap();
-      this.initializeGameObjects();
+      this.initializePokemonCenter();
       this.initializeDebugGraphics();
       this.centerGameContainer();
    }
@@ -160,16 +126,26 @@ export class Game {
    }
 
    private initializeTileMap(): void {
-      this.tileMap = new TileMap(tileset, 30, 20);
+      //console.log(tileset);
+      //if (new URL(tileset)) {
+      //}
+
+      this.tileMap = TileMap.overworld();
       this.gameContainer.addChild(this.tileMap.getContainer());
    }
 
-   private initializeGameObjects(): void {
-      this.player = new Player(GAME_CONSTANTS.WORLD_BOUNDS.width / 2, GAME_CONSTANTS.WORLD_BOUNDS.height / 2);
-      this.pc = new PC(100, 100, this.debugMode);
-
-      this.gameContainer.addChild(this.pc.getInteractionZone());
+   initializePlayer(controller: SpriteController): void {
+      this.player = new Player(
+         GAME_CONSTANTS.WORLD_BOUNDS.width / 2,
+         GAME_CONSTANTS.WORLD_BOUNDS.height / 2,
+         controller
+      );
       this.gameContainer.addChild(this.player.sprite);
+   }
+
+   private initializePokemonCenter(): void {
+      this.pc = new PC(100, 100, this.debugMode);
+      this.gameContainer.addChild(this.pc.getInteractionZone());
       this.gameContainer.addChild(this.pc.sprite);
       this.app.stage.addChild(this.pc.getInterface());
    }
@@ -189,17 +165,17 @@ export class Game {
       const collisionBox = this.calculateCollisionBox(nextPosition);
 
       if (collisionBox.canWalk) {
-         this.player.update(deltaTime);
+         const state = this.player.update(deltaTime);
          // Send position update to server
-         if (this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(
-               JSON.stringify({
-                  type: "update",
-                  id: this.player.id,
-                  x: this.player.sprite.x,
-                  y: this.player.sprite.y
-               })
-            );
+         if (state.isMoving && !!this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const update = JSON.stringify({
+               type: "update",
+               id: this.player.id,
+               x: this.player.sprite.x,
+               y: this.player.sprite.y
+            });
+
+            this.ws.send(update);
          }
       }
 
@@ -342,8 +318,9 @@ export class Game {
       this.centerGameContainer();
    }
 
-   public start(): void {
+   public render(): void {
       const gameContainer = document.getElementById("game-container");
+
       if (gameContainer) {
          gameContainer.appendChild(this.app.view as HTMLCanvasElement);
          console.log("PixiJS canvas appended to game-container");
@@ -351,6 +328,20 @@ export class Game {
          console.log("Renderer resized to container dimensions");
       } else {
          console.error("game-container element not found in DOM");
+      }
+
+      // Force an initial render to ensure the canvas displays
+      //(this as any).app.renderer.render((this as any).app.stage);
+      //console.log("Forced initial render");
+   }
+
+   public start(): void {
+      this.setupEventListeners();
+
+      // Ensure the ticker is running
+      if (!this.app.ticker.started) {
+         console.log("Starting ticker in constructor");
+         this.app.ticker.start();
       }
    }
 }

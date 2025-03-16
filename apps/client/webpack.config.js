@@ -31,7 +31,8 @@ module.exports = (env, argv) => {
          extensions: [".tsx", ".ts", ".js"],
          alias: {
             "@assets": path.resolve(__dirname, "src/assets"),
-            "@config": path.resolve(__dirname, "src/config")
+            "@config": path.resolve(__dirname, "src/config"),
+            "@game": path.resolve(__dirname, "src/game")
          }
       },
       output: {

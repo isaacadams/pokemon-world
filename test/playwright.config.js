@@ -16,6 +16,6 @@ export default defineConfig({
       timeout: 120000,
       reuseExistingServer: !process.env.CI
    },
-   retries: 2,
+   retries: 0,
    reporter: [["list"], ["html", { outputFolder: "playwright-report" }]]
 });
