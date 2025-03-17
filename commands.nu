@@ -19,7 +19,7 @@ def "main deploy" [] {
 }
 
 def "main upload client" [] {
-    npm run build
+    pnpm -F @pokemon-world/game build
     aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/
 }
 
