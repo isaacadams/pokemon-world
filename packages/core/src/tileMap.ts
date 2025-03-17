@@ -18,10 +18,12 @@ export class TileMap {
    private overworld: TileSet;
 
    constructor(tilesImagePath: string, tilesTmxPath: string, mapTmxPath: string) {
+      console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
       this.overworld = new TileSet(tilesTmxPath);
       this.container = new PIXI.Container();
       this.tileSize = 32;
       this.tileset = PIXI.BaseTexture.from(tilesImagePath);
+      console.log("is tile set png valid? ", this.tileset.valid);
 
       //if (!this.tileset.valid) {
       //   console.error("failed");
@@ -29,6 +31,7 @@ export class TileMap {
 
       const parser = new DOMParser();
       const tmx = parser.parseFromString(mapTmxPath, "text/xml");
+      console.log(tmx);
       const layerElements = tmx.getElementsByTagName("layer");
       for (let i = 0; i < layerElements.length; i++) {
          const layer = layerElements[i];

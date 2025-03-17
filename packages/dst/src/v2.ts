@@ -6,7 +6,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Load map data (replace with your actual map data)
-import map1Data from "../../apps/client/src/assets/tilesets/map1.tmx";
+//import map1Data from "../../apps/client/src/assets/tilesets/map1.tmx";
+const map1Data = path.resolve(__dirname, "../../apps/client/src/assets/tilesets/map1.tmx");
 const tilesetImagePath = path.resolve(__dirname, "../../apps/client/src/assets/tilesets/overworld.png");
 const tilesetTmxPath = path.resolve(__dirname, "../../apps/client/src/assets/tilesets/overworld.tmx");
 
