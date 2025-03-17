@@ -2,6 +2,10 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Pixi.js Deterministic Simulation Testing", () => {
    test("should initialize game and simulate movement", async ({ page }) => {
+      page.on("console", msg => {
+         console.log(msg);
+      });
+
       // Navigate to the HTML file
       await page.goto("/");
 
