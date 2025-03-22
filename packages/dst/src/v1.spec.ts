@@ -31,7 +31,13 @@ test.describe("Pixi.js Deterministic Simulation Testing", () => {
       // Add assertions (e.g., check console logs or DOM changes)
       expect(result).toBe(true);
 
-      // Take a screenshot for visual verification (optional)
-      await page.screenshot({ path: "game.png" });
+      try {
+         await page.waitForTimeout(1000); // Give Pixi.js time to render
+         // Take a screenshot for visual verification (optional)
+         await page.screenshot({ path: "game.png" });
+         console.log("Snapshot captured");
+      } catch (error) {
+         console.error("Snapshot failed:", error);
+      }
    });
 });
