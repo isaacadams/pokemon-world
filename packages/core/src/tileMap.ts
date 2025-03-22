@@ -9,21 +9,21 @@ interface TmxLayer {
 export class TileMap {
    private container: PIXI.Container;
    private tileSize: number;
-   private tileset: PIXI.BaseTexture;
+   private tilesetTexture: PIXI.BaseTexture;
    private tiles: PIXI.Sprite[][][] = [];
 
    private layers: PIXI.Container[] = [];
    private debugMode: boolean = false;
    private verboseMode: boolean = false;
-   private overworld: TileSet;
+   private tilesetConfig: TileSet;
 
    constructor(tilesImagePath: string, tilesTmxPath: string, mapTmxPath: string) {
       //console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
-      this.overworld = new TileSet(tilesTmxPath);
-      this.tileset = PIXI.BaseTexture.from(tilesImagePath);
+      this.tilesetConfig = new TileSet(tilesTmxPath);
+      this.tilesetTexture = PIXI.BaseTexture.from(tilesImagePath);
       this.container = new PIXI.Container();
       this.tileSize = 32;
-      console.log("is tile set png valid? ", this.tileset.valid);
+      console.log("is tile set png valid? ", this.tilesetTexture.valid);
 
       //if (!this.tileset.valid) {
       //   console.error("failed");
@@ -60,7 +60,7 @@ export class TileMap {
 
                const tile = new PIXI.Sprite(
                   new PIXI.Texture(
-                     this.tileset,
+                     this.tilesetTexture,
                      new PIXI.Rectangle(
                         ((tileId - 1) % 8) * this.tileSize,
                         Math.floor((tileId - 1) / 8) * this.tileSize,
@@ -103,7 +103,7 @@ export class TileMap {
             console.log(`Checking tile at (${x},${y}) Layer ${layer}: ID=${tileId}`);
          }
 
-         const tileElement = this.overworld.getElement(tileId);
+         const tileElement = this.tilesetConfig.getElement(tileId);
          if (tileElement) {
             const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
             if (canWalkProperty && canWalkProperty.getAttribute("value") === "true") {

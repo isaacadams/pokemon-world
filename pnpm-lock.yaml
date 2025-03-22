@@ -57,6 +57,9 @@ importers:
 
   apps/client:
     dependencies:
+      '@repo/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       zod:
         specifier: 3.24.2
         version: 3.24.2

@@ -3,9 +3,12 @@ import build from "@config/build";
 import { Player } from "./Player";
 import { SpriteController } from "./SpriteController";
 import { PC } from "./PC";
-import { TileMap } from "./TileMap";
 import { DebugOverlay } from "./DebugOverlay";
 import { RemotePlayerManager } from "./RemotePlayersManager";
+import { TileMap } from "@repo/core";
+import map1Data from "@assets/tilesets/map1.tmx";
+import tmxOverworld from "@assets/tilesets/overworld.tmx";
+import pngOverworld from "@assets/tilesets/overworld.png";
 
 interface Point {
    x: number;
@@ -41,6 +44,10 @@ export class Game {
    private verboseMode: boolean = false;
    private debugOverlay: DebugOverlay;
    private ws?: WebSocket;
+
+   static overworld() {
+      return new TileMap(pngOverworld, tmxOverworld, map1Data);
+   }
 
    constructor() {
       console.log("Game constructor called");
@@ -130,7 +137,7 @@ export class Game {
       //if (new URL(tileset)) {
       //}
 
-      this.tileMap = TileMap.overworld();
+      this.tileMap = Game.overworld();
       this.gameContainer.addChild(this.tileMap.getContainer());
    }
 
