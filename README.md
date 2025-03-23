@@ -12,6 +12,7 @@ places to look for more sprites and tilesets:
 - when walking into a barrier, animation should still play
 - new remote player appears to spawn in top left corner
 - when direction is changed while holding down a different moving key, animation breaks
+- tops of trees & top of pokemon center needs to go on layer 3 and are not impassable
 
 ## tmux
 

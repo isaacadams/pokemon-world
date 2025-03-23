@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js";
+import { overworld, TileSetFactory } from "./overworld";
 
 interface TmxLayer {
    data: number[];
@@ -21,6 +22,10 @@ export class TileMap {
       //console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
       this.tilesetConfig = new TileSet(tilesTmxPath);
       this.tilesetTexture = PIXI.BaseTexture.from(tilesImagePath);
+
+      const factory = new TileSetFactory(this.tilesetTexture, 32);
+      overworld(factory);
+
       this.container = new PIXI.Container();
       this.tileSize = 32;
       console.log("is tile set png valid? ", this.tilesetTexture.valid);
@@ -71,17 +76,11 @@ export class TileMap {
                const tileId = tileIds[y * width + x];
                if (tileId === 0) continue;
 
-               const tile = new PIXI.Sprite(
-                  new PIXI.Texture(
-                     this.tilesetTexture,
-                     new PIXI.Rectangle(
-                        ((tileId - 1) % 8) * this.tileSize,
-                        Math.floor((tileId - 1) / 8) * this.tileSize,
-                        this.tileSize,
-                        this.tileSize
-                     )
-                  )
-               );
+               const cached = factory.tiles.get(tileId - 1);
+               if (!cached) {
+                  console.log(`missing: `, tileId - 1);
+               }
+               const tile = new PIXI.Sprite(cached!.texture);
 
                tile.x = x * this.tileSize;
                tile.y = y * this.tileSize;
@@ -93,7 +92,7 @@ export class TileMap {
                   g.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
 
                   text.visible = true;
-                  text.text = `x:${x}, y:${y}\ntile id: ${tileId}`;
+                  text.text = `x:${x}, y:${y}\ntile id: ${tileId - 1}`;
                });
                tile.on("pointerleave", _ => {
                   g.clear();
