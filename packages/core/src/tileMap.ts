@@ -25,6 +25,19 @@ export class TileMap {
       this.tileSize = 32;
       console.log("is tile set png valid? ", this.tilesetTexture.valid);
 
+      // debugging when hovering over tiles
+      const g = new PIXI.Graphics();
+      const text = new PIXI.Text("Debug Mode Off", {
+         fontFamily: "Arial",
+         fontSize: 16,
+         fill: 0x00ffff,
+         stroke: 0x000000,
+         strokeThickness: 2
+      });
+      text.x = 10;
+      text.y = 675;
+      text.visible = false;
+
       //if (!this.tileset.valid) {
       //   console.error("failed");
       //}
@@ -69,13 +82,32 @@ export class TileMap {
                      )
                   )
                );
+
                tile.x = x * this.tileSize;
                tile.y = y * this.tileSize;
+
+               tile.eventMode = "static";
+               tile.on("pointerover", _ => {
+                  g.clear();
+                  g.lineStyle(2, 0xff0000, 0.8);
+                  g.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+
+                  text.visible = true;
+                  text.text = `x:${x}, y:${y}\ntile id: ${tileId}`;
+               });
+               tile.on("pointerleave", _ => {
+                  g.clear();
+                  text.visible = true;
+                  text.text = "";
+               });
+
                this.tiles[i][y][x] = tile;
                layerContainer.addChild(tile);
             }
          }
       }
+
+      this.container.addChild(g, text);
    }
 
    public getContainer(): PIXI.Container {
@@ -119,25 +151,26 @@ export class TileMap {
          }
 
          const nonWalkableTiles = [
+            // pokemon center
             [105, 109],
             [113, 117],
             [121, 125],
             [129, 133],
             [137, 141],
+
+            // the big rocks
             [346, 348],
             [354, 356],
             [362, 364],
-            [82],
-            [97],
-            [714, 715],
+
+            // pink trees
             [721, 723],
             [729, 731],
             [737, 739],
+
+            // trees
             [801, 802],
-            [809, 810],
-            [2566, 2567],
-            [2574, 2575],
-            [2582, 2583]
+            [809, 810]
          ];
 
          for (const range of nonWalkableTiles) {
