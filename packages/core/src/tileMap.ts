@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js";
-import { overworld, TileSetFactory } from "./overworld";
+import { overworld, SpriteTile, TileSetFactory } from "./overworld";
 
 interface TmxLayer {
    data: number[];
@@ -12,6 +12,8 @@ export class TileMap {
    private tileSize: number;
    private tilesetTexture: PIXI.BaseTexture;
    private tiles: PIXI.Sprite[][][] = [];
+
+   private xTiles: SpriteTile[][][];
 
    private layers: PIXI.Container[] = [];
    private debugMode: boolean = false;
@@ -51,6 +53,8 @@ export class TileMap {
       const tmx = parser.parseFromString(mapTmxPath, "text/xml");
       const layerElements = tmx.getElementsByTagName("layer");
 
+      this.xTiles = [];
+
       for (let i = 0; i < layerElements.length; i++) {
          const layer = layerElements[i];
          const layerContainer = new PIXI.Container();
@@ -71,6 +75,10 @@ export class TileMap {
             .fill(null)
             .map(() => Array(width).fill(null));
 
+         this.xTiles[i] = Array(height)
+            .fill(null)
+            .map(() => Array(width).fill(null));
+
          for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
                const tileId = tileIds[y * width + x];
@@ -80,13 +88,13 @@ export class TileMap {
                if (!cached) {
                   console.log(`missing: `, tileId - 1);
                }
-               const tile = new PIXI.Sprite(cached!.texture);
 
-               tile.x = x * this.tileSize;
-               tile.y = y * this.tileSize;
+               const spriteTile = cached!.sprite(i, x, y); // new PIXI.Sprite(cached!.texture);
+               //spriteTile.x = x * this.tileSize;
+               //spriteTile.y = y * this.tileSize;
 
-               tile.eventMode = "static";
-               tile.on("pointerover", _ => {
+               spriteTile.sprite.eventMode = "static";
+               spriteTile.sprite.on("pointerover", _ => {
                   g.clear();
                   g.lineStyle(2, 0xff0000, 0.8);
                   g.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
@@ -94,14 +102,15 @@ export class TileMap {
                   text.visible = true;
                   text.text = `x:${x}, y:${y}\ntile id: ${tileId - 1}`;
                });
-               tile.on("pointerleave", _ => {
+               spriteTile.sprite.on("pointerleave", _ => {
                   g.clear();
                   text.visible = true;
                   text.text = "";
                });
 
-               this.tiles[i][y][x] = tile;
-               layerContainer.addChild(tile);
+               this.tiles[i][y][x] = spriteTile.sprite;
+               layerContainer.addChild(spriteTile.sprite);
+               this.xTiles[i][y][x] = spriteTile;
             }
          }
       }
@@ -123,59 +132,61 @@ export class TileMap {
       }
 
       for (let layer = 0; layer < this.tiles.length; layer++) {
-         const tile = this.tiles[layer][y][x];
+         const tile = this.xTiles[layer][y][x];
          if (!tile) continue;
+         //console.log(tile);
+         return !tile.tile.config.impassable;
 
-         const tileX = Math.floor(tile.texture.frame.x / this.tileSize);
-         const tileY = Math.floor(tile.texture.frame.y / this.tileSize);
-         const tileId = tileY * 8 + tileX + 1;
-
-         if (this.debugMode && this.verboseMode) {
-            console.log(`Checking tile at (${x},${y}) Layer ${layer}: ID=${tileId}`);
-         }
-
-         const tileElement = this.tilesetConfig.getElement(tileId);
-         if (tileElement) {
-            const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
-            if (canWalkProperty && canWalkProperty.getAttribute("value") === "true") {
-               continue;
-            }
-         }
-
-         if (tileElement) {
-            const e = new TileElement(tileId, tileElement);
-            if (e.impassable()) {
-               return false;
-            }
-         }
-
-         const nonWalkableTiles = [
-            // pokemon center
-            [105, 109],
-            [113, 117],
-            [121, 125],
-            [129, 133],
-            [137, 141],
-
-            // the big rocks
-            [346, 348],
-            [354, 356],
-            [362, 364],
-
-            // pink trees
-            [721, 723],
-            [729, 731],
-            [737, 739],
-
-            // trees
-            [801, 802],
-            [809, 810]
-         ];
-
-         for (const range of nonWalkableTiles) {
-            if (range.length === 1 && tileId === range[0]) return false;
-            if (range.length === 2 && tileId >= range[0] && tileId <= range[1]) return false;
-         }
+         //const tileX = Math.floor(tile.texture.frame.x / this.tileSize);
+         //const tileY = Math.floor(tile.texture.frame.y / this.tileSize);
+         //const tileId = tileY * 8 + tileX + 1;
+         //
+         //if (this.debugMode && this.verboseMode) {
+         //   console.log(`Checking tile at (${x},${y}) Layer ${layer}: ID=${tileId}`);
+         //}
+         //
+         //const tileElement = this.tilesetConfig.getElement(tileId);
+         //if (tileElement) {
+         //   const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
+         //   if (canWalkProperty && canWalkProperty.getAttribute("value") === "true") {
+         //      continue;
+         //   }
+         //}
+         //
+         //if (tileElement) {
+         //   const e = new TileElement(tileId, tileElement);
+         //   if (e.impassable()) {
+         //      return false;
+         //   }
+         //}
+         //
+         //const nonWalkableTiles = [
+         //   // pokemon center
+         //   [105, 109],
+         //   [113, 117],
+         //   [121, 125],
+         //   [129, 133],
+         //   [137, 141],
+         //
+         //   // the big rocks
+         //   [346, 348],
+         //   [354, 356],
+         //   [362, 364],
+         //
+         //   // pink trees
+         //   [721, 723],
+         //   [729, 731],
+         //   [737, 739],
+         //
+         //   // trees
+         //   [801, 802],
+         //   [809, 810]
+         //];
+         //
+         //for (const range of nonWalkableTiles) {
+         //   if (range.length === 1 && tileId === range[0]) return false;
+         //   if (range.length === 2 && tileId >= range[0] && tileId <= range[1]) return false;
+         //}
       }
       return true;
    }
