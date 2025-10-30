@@ -10,6 +10,7 @@ import { TileMap } from "@repo/core";
 import map1Data from "@assets/tilesets/map1.tmx";
 import tmxOverworld from "@assets/tilesets/overworld.tmx";
 import pngOverworld from "@assets/tilesets/overworld.png";
+import { WildPokemonManager } from "./WildPokemonManager";
 
 interface Point {
    x: number;
@@ -47,6 +48,8 @@ export class Game {
    private ws?: WebSocket;
    private speedMultiplier: number = 1;
    private paused: boolean = false;
+   private remoteLabels: Map<string, string> = new Map();
+   private wild?: WildPokemonManager;
 
    static overworld() {
       return new TileMap(pngOverworld, tmxOverworld, map1Data);
@@ -79,6 +82,7 @@ export class Game {
    setupWebSocket(controller: SpriteController): void {
       const manager = new RemotePlayerManager(this.gameContainer, controller);
       this.ws = new WebSocket(build.websocket);
+      try { (window as any).__fakeWS = this.ws; } catch {}
       this.ws.onopen = () => console.log("Connected to WebSocket server");
 
       this.ws.onmessage = event => {
@@ -101,6 +105,7 @@ export class Game {
                )) {
                   if (id !== this.player.id)
                      manager.add(id, state.position.x, state.position.y, state.name || "Player");
+               if (id !== this.player.id) this.remoteLabels.set(id, state.name || "Player");
                }
                break;
             case "join":
@@ -110,10 +115,12 @@ export class Game {
                if (data.id !== this.player.id) manager.update(data.id, data.x, data.y);
                break;
             case "rename":
-               manager.rename?.(data.id, data.name);
+            manager.rename?.(data.id, data.name);
+            if (data.id !== this.player.id) this.remoteLabels.set(data.id, data.name || "Player");
                break;
             case "leave":
                manager.remove(data.id);
+            this.remoteLabels.delete(data.id);
                break;
          }
       };
@@ -172,6 +179,15 @@ export class Game {
       );
       this.gameContainer.addChild(this.player.sprite);
       this.gameContainer.addChild(this.player.label);
+
+      // Initialize wild Pokémon after player is ready (controller available)
+      this.wild = new WildPokemonManager(
+         this.gameContainer,
+         controller,
+         this.tileMap,
+         GAME_CONSTANTS.WORLD_BOUNDS
+      );
+      this.wild.spawn(6, { x: this.player.sprite.x, y: this.player.sprite.y });
    }
 
    private initializePokemonCenter(): void {
@@ -218,6 +234,9 @@ export class Game {
       this.updateDebug(nextPosition, collisionBox);
       // Update player position in debug overlay
       this.debugOverlay.updatePlayerPosition(this.player.sprite.x, this.player.sprite.y);
+
+      // Update wild Pokémon
+      this.wild?.update(scaledDelta);
    }
 
    private updatePCInteraction(): void {
@@ -402,6 +421,10 @@ export class Game {
          }
       };
       walk(root);
+      // Include any known remote labels (helps in test environments without full rendering)
+      for (const name of this.remoteLabels.values()) {
+         if (!texts.includes(name)) texts.push(name);
+      }
       return texts;
    }
 

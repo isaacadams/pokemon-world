@@ -57,7 +57,12 @@ export class RemotePlayerManager {
    }
 
    rename(id: string, name: string): void {
-      const state = this.map.get(id);
+      let state = this.map.get(id);
+      if (!state) {
+         // Ensure remote exists if a rename arrives before a players/join message
+         this.add(id, 480, 320, name || "Player");
+         state = this.map.get(id);
+      }
       if (state) {
          state.label.text = name || "Player";
       }
