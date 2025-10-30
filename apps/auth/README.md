@@ -25,3 +25,6 @@ https://api.slack.com/methods/oauth.v2.access#errors
 ```json
 { "ok": false, "error": "invalid_code" }
 ```
+
+See also:
+- DST docs: packages/dst/README.md

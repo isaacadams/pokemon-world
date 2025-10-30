@@ -3,9 +3,12 @@ import build from "@config/build";
 import { Player } from "./Player";
 import { SpriteController } from "./SpriteController";
 import { PC } from "./PC";
-import { TileMap } from "./TileMap";
 import { DebugOverlay } from "./DebugOverlay";
 import { RemotePlayerManager } from "./RemotePlayersManager";
+import { TileMap } from "@repo/core";
+import map1Data from "@assets/tilesets/map1.tmx";
+import tmxOverworld from "@assets/tilesets/overworld.tmx";
+import pngOverworld from "@assets/tilesets/overworld.png";
 
 interface Point {
    x: number;
@@ -41,6 +44,12 @@ export class Game {
    private verboseMode: boolean = false;
    private debugOverlay: DebugOverlay;
    private ws?: WebSocket;
+   private speedMultiplier: number = 1;
+   private paused: boolean = false;
+
+   static overworld() {
+      return new TileMap(pngOverworld, tmxOverworld, map1Data);
+   }
 
    constructor() {
       console.log("Game constructor called");
@@ -130,7 +139,7 @@ export class Game {
       //if (new URL(tileset)) {
       //}
 
-      this.tileMap = TileMap.overworld();
+      this.tileMap = Game.overworld();
       this.gameContainer.addChild(this.tileMap.getContainer());
    }
 
@@ -157,15 +166,19 @@ export class Game {
    }
 
    public getPlayerPosition(): { x: number; y: number } {
-      return { x: this.player.sprite.x, y: this.player.sprite.y };
+      return { x: this.player?.sprite?.x ?? 0, y: this.player?.sprite?.y ?? 0 };
    }
 
    private gameLoop(deltaTime: number): void {
-      const nextPosition = this.player.getNextPosition(deltaTime);
+      if (this.paused) {
+         return;
+      }
+      const scaledDelta = deltaTime * this.speedMultiplier;
+      const nextPosition = this.player.getNextPosition(scaledDelta);
       const collisionBox = this.calculateCollisionBox(nextPosition);
 
       if (collisionBox.canWalk) {
-         const state = this.player.update(deltaTime);
+         const state = this.player.update(scaledDelta);
          // Send position update to server
          if (state.isMoving && !!this.ws && this.ws.readyState === WebSocket.OPEN) {
             const update = JSON.stringify({
@@ -343,5 +356,18 @@ export class Game {
          console.log("Starting ticker in constructor");
          this.app.ticker.start();
       }
+   }
+
+   // Dev controls
+   public setSpeedMultiplier(multiplier: number): void {
+      this.speedMultiplier = Math.max(0, multiplier);
+   }
+
+   public pause(): void {
+      this.paused = true;
+   }
+
+   public resume(): void {
+      this.paused = false;
    }
 }

@@ -1,4 +1,56 @@
+## Pokemon World (Monorepo)
+
+Terse quickstart for getting the app running locally.
+
+### Prerequisites
+- Node.js 18+ (LTS recommended)
+- pnpm 10+ (`corepack enable` or `npm i -g pnpm`)
+
+### Install
+```bash
+pnpm install
+```
+
+### Run (development)
+- Client (PixiJS game):
+```bash
+pnpm --filter @pokemon-world/game dev
+```
+  - Opens dev server via webpack-dev-server.
+
+- Server (WebSocket):
+```bash
+node apps/server/server.js
+```
+
+### Build
+```bash
+pnpm build
+```
+Uses Turborepo to build all packages/apps.
+
+### Repo structure
+- `apps/client`: browser client (webpack, PixiJS)
+- `apps/server`: Node WebSocket server (`ws`)
+- `apps/auth`: Express auth prototype
+- `packages/core`: shared game/core logic
+ - `packages/dst`: deterministic simulation testing (DST)
+
+### Docs
+- DST: packages/dst/README.md
+- Client: apps/client/README.md
+- Server: apps/server/README.md
+- Auth: apps/auth/README.md
+- Core: packages/core/README.md
+
+### Common issues
+- If deps look odd: `pnpm run fresh-install`
+- Port conflicts: stop prior webpack/dev servers
+
+### Deployed demo
 site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
+
+---
 
 ## Sprites / Tilesets
 
@@ -11,6 +63,8 @@ places to look for more sprites and tilesets:
 
 - when walking into a barrier, animation should still play
 - new remote player appears to spawn in top left corner
+- when direction is changed while holding down a different moving key, animation breaks
+- tops of trees & top of pokemon center needs to go on layer 3 and are not impassable
 
 ## tmux
 

@@ -55,17 +55,16 @@ function initializeGame(opts: { scenario?: string; name?: string } = {}) {
 }
 
 window.onload = () => {
-   const params = new URLSearchParams(window.location.search);
-   const { teardown } = initializeGame({});
-   (window as any).teardownGame = teardown;
-
-   if (params.get("dev")) {
-      new DevControls(({ scenario, name }) => {
-         const t = (window as any).teardownGame as () => void;
-         if (t) t();
-         const next = initializeGame({ scenario, name });
-         (window as any).teardownGame = next.teardown;
-         return next;
-      });
-   }
+   // Always show DevControls in this page
+   const initial = initializeGame({ name: "Dev" });
+   (window as any).teardownGame = initial.teardown;
+   new DevControls(({ scenario, name }) => {
+      const t = (window as any).teardownGame as () => void;
+      if (t) t();
+      const next = initializeGame({ scenario, name });
+      (window as any).teardownGame = next.teardown;
+      return next;
+   });
 };
+
+

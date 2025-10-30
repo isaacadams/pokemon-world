@@ -1,4 +1,5 @@
 import * as PIXI from "pixi.js";
+import { overworld, SpriteTile, TileSetFactory } from "./overworld";
 
 interface TmxLayer {
    data: number[];
@@ -9,19 +10,40 @@ interface TmxLayer {
 export class TileMap {
    private container: PIXI.Container;
    private tileSize: number;
-   private tileset: PIXI.BaseTexture;
+   private tilesetTexture: PIXI.BaseTexture;
    private tiles: PIXI.Sprite[][][] = [];
+
+   private xTiles: SpriteTile[][][];
 
    private layers: PIXI.Container[] = [];
    private debugMode: boolean = false;
    private verboseMode: boolean = false;
-   private overworld: TileSet;
+   private tilesetConfig: TileSet;
 
    constructor(tilesImagePath: string, tilesTmxPath: string, mapTmxPath: string) {
-      this.overworld = new TileSet(tilesTmxPath);
+      //console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
+      this.tilesetConfig = new TileSet(tilesTmxPath);
+      this.tilesetTexture = PIXI.BaseTexture.from(tilesImagePath);
+
+      const factory = new TileSetFactory(this.tilesetTexture, 32);
+      overworld(factory);
+
       this.container = new PIXI.Container();
       this.tileSize = 32;
-      this.tileset = PIXI.BaseTexture.from(tilesImagePath);
+      console.log("is tile set png valid? ", this.tilesetTexture.valid);
+
+      // debugging when hovering over tiles
+      const g = new PIXI.Graphics();
+      const text = new PIXI.Text("Debug Mode Off", {
+         fontFamily: "Arial",
+         fontSize: 16,
+         fill: 0x00ffff,
+         stroke: 0x000000,
+         strokeThickness: 2
+      });
+      text.x = 10;
+      text.y = 675;
+      text.visible = false;
 
       //if (!this.tileset.valid) {
       //   console.error("failed");
@@ -30,6 +52,9 @@ export class TileMap {
       const parser = new DOMParser();
       const tmx = parser.parseFromString(mapTmxPath, "text/xml");
       const layerElements = tmx.getElementsByTagName("layer");
+
+      this.xTiles = [];
+
       for (let i = 0; i < layerElements.length; i++) {
          const layer = layerElements[i];
          const layerContainer = new PIXI.Container();
@@ -44,7 +69,13 @@ export class TileMap {
 
          const width = parseInt(layer.getAttribute("width")!);
          const height = parseInt(layer.getAttribute("height")!);
+         console.assert(tileIds.length === width * height, "count of tiles should match dimensions");
+
          this.tiles[i] = Array(height)
+            .fill(null)
+            .map(() => Array(width).fill(null));
+
+         this.xTiles[i] = Array(height)
             .fill(null)
             .map(() => Array(width).fill(null));
 
@@ -53,24 +84,38 @@ export class TileMap {
                const tileId = tileIds[y * width + x];
                if (tileId === 0) continue;
 
-               const tile = new PIXI.Sprite(
-                  new PIXI.Texture(
-                     this.tileset,
-                     new PIXI.Rectangle(
-                        ((tileId - 1) % 8) * this.tileSize,
-                        Math.floor((tileId - 1) / 8) * this.tileSize,
-                        this.tileSize,
-                        this.tileSize
-                     )
-                  )
-               );
-               tile.x = x * this.tileSize;
-               tile.y = y * this.tileSize;
-               this.tiles[i][y][x] = tile;
-               layerContainer.addChild(tile);
+               const cached = factory.tiles.get(tileId - 1);
+               if (!cached) {
+                  console.log(`missing: `, tileId - 1);
+               }
+
+               const spriteTile = cached!.sprite(i, x, y); // new PIXI.Sprite(cached!.texture);
+               //spriteTile.x = x * this.tileSize;
+               //spriteTile.y = y * this.tileSize;
+
+               spriteTile.sprite.eventMode = "static";
+               spriteTile.sprite.on("pointerover", _ => {
+                  g.clear();
+                  g.lineStyle(2, 0xff0000, 0.8);
+                  g.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+
+                  text.visible = true;
+                  text.text = `x:${x}, y:${y}\ntile id: ${tileId - 1}`;
+               });
+               spriteTile.sprite.on("pointerleave", _ => {
+                  g.clear();
+                  text.visible = true;
+                  text.text = "";
+               });
+
+               this.tiles[i][y][x] = spriteTile.sprite;
+               layerContainer.addChild(spriteTile.sprite);
+               this.xTiles[i][y][x] = spriteTile;
             }
          }
       }
+
+      this.container.addChild(g, text);
    }
 
    public getContainer(): PIXI.Container {
@@ -87,58 +132,12 @@ export class TileMap {
       }
 
       for (let layer = 0; layer < this.tiles.length; layer++) {
-         const tile = this.tiles[layer][y][x];
+         const tile = this.xTiles[layer][y][x];
          if (!tile) continue;
-
-         const tileX = Math.floor(tile.texture.frame.x / this.tileSize);
-         const tileY = Math.floor(tile.texture.frame.y / this.tileSize);
-         const tileId = tileY * 8 + tileX + 1;
-
-         if (this.debugMode && this.verboseMode) {
-            console.log(`Checking tile at (${x},${y}) Layer ${layer}: ID=${tileId}`);
-         }
-
-         const tileElement = this.overworld.getElement(tileId);
-         if (tileElement) {
-            const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
-            if (canWalkProperty && canWalkProperty.getAttribute("value") === "true") {
-               continue;
-            }
-         }
-
-         if (tileElement) {
-            const e = new TileElement(tileId, tileElement);
-            if (e.impassable()) {
-               return false;
-            }
-         }
-
-         const nonWalkableTiles = [
-            [105, 109],
-            [113, 117],
-            [121, 125],
-            [129, 133],
-            [137, 141],
-            [346, 348],
-            [354, 356],
-            [362, 364],
-            [82],
-            [97],
-            [714, 715],
-            [721, 723],
-            [729, 731],
-            [737, 739],
-            [801, 802],
-            [809, 810],
-            [2566, 2567],
-            [2574, 2575],
-            [2582, 2583]
-         ];
-
-         for (const range of nonWalkableTiles) {
-            if (range.length === 1 && tileId === range[0]) return false;
-            if (range.length === 2 && tileId >= range[0] && tileId <= range[1]) return false;
-         }
+         // If any layer marks the tile impassable, block walking
+        if (tile.tile.config.impassable) {
+           return false;
+        }
       }
       return true;
    }

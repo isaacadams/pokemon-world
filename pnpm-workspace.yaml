@@ -2,4 +2,9 @@ packages:
   - apps/*
   - packages/*
 onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@swc/core'
   - canvas
+ignoredBuiltDependencies:
+  - lmdb
+  - msgpackr-extract

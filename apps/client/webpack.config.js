@@ -10,7 +10,8 @@ module.exports = (env, argv) => {
       entry: {
          index: "./src/index.ts",
          game: "./src/game.ts",
-         callback: "./src/callback.ts"
+         callback: "./src/callback.ts",
+         devmode: "./src/devmode.ts"
       },
       module: {
          rules: [
@@ -56,6 +57,11 @@ module.exports = (env, argv) => {
             filename: "game.html",
             chunks: ["game"]
          }),
+         new HtmlWebpackPlugin({
+            template: "src/devmode.html",
+            filename: "devmode.html",
+            chunks: ["devmode"]
+         }),
          new webpack.DefinePlugin({
             "process.env.NODE_ENV": JSON.stringify(mode),
             "process.env.AUTH_SERVER_URL": JSON.stringify(
@@ -78,7 +84,8 @@ module.exports = (env, argv) => {
             rewrites: [
                { from: /^\/$/, to: "/index.html" },
                { from: /^\/game.html$/, to: "/game.html" },
-               { from: /^\/callback$/, to: "/callback.html" }
+                  { from: /^\/callback$/, to: "/callback.html" },
+                  { from: /^\/devmode.html$/, to: "/devmode.html" }
             ]
          }
       }

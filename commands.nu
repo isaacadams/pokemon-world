@@ -19,17 +19,25 @@ def "main deploy" [] {
 }
 
 def "main upload client" [] {
-    npm run build
+    pnpm -F @pokemon-world/game build
     aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/
 }
 
-def "main upload server" [] {
-    aws s3 cp apps/server/server.js s3://my-game-server-artifacts-dev-389616631340/
-    #scp -r auth pokemon-world:/home/ec2-user/auth
-    rsync -avz --exclude 'node_modules' apps/auth/ pokemon-world:/home/ec2-user/auth
-    ssh pokemon-world "cd /home/ec2-user/auth && npm i && mv .env.production .env && tmux new-session -d -s auth 'node server.js'"
-    #firewall-cmd --add-port=3000/tcp --permanent
-    #firewall-cmd --reload
+def "main upload server" [name: string] {
+    match $name {
+        # authentication for slack, runs on port 3000
+        "auth" => {
+            #scp -r auth pokemon-world:/home/ec2-user/auth
+            rsync -avz --exclude 'node_modules' apps/auth/ pokemon-world:/home/ec2-user/auth
+            ssh pokemon-world "cd /home/ec2-user/auth && npm i && mv .env.production .env && tmux kill-session -t auth && tmux new-session -d -s auth 'node server.js'"
+        }
+        # websocket, port: 8000
+        "wss" => {
+            #aws s3 cp apps/server/server.js s3://my-game-server-artifacts-dev-389616631340/
+            rsync -avz --exclude 'node_modules' apps/server/ pokemon-world:/home/ec2-user/wss
+            ssh pokemon-world "cd /home/ec2-user/wss && npm i && tmux kill-session -t wss && tmux new-session -d -s wss 'node server.js'"
+        }
+    }
 }
 
 def "main env" [] {

@@ -30,7 +30,7 @@ export class DebugOverlay {
          strokeThickness: 2
       });
       this.debugText.x = 10;
-      this.debugText.y = 10;
+      this.debugText.y = -120;
       this.debugText.visible = false;
 
       this.container.addChild(this.debugGraphics, this.debugText);
