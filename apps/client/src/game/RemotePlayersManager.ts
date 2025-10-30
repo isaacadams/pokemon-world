@@ -2,7 +2,8 @@ import * as PIXI from "pixi.js";
 import { PlayerState, SpriteController } from "./SpriteController";
 
 export class RemotePlayerManager {
-   map: Map<string, { id: string; player: PlayerState; label: PIXI.Text }>;
+   map: Map<string, { id: string; player: PlayerState; label: PIXI.Text; lastUpdateMs: number }>;
+   private idleThresholdMs: number = 200; // if no updates for 200ms, consider idle
    constructor(
       private game: PIXI.Container,
       private controller: SpriteController
@@ -10,9 +11,7 @@ export class RemotePlayerManager {
       this.map = new Map();
    }
 
-   getSprites(): PIXI.AnimatedSprite[] {
-      return Array.from(this.map.values()).map(v => v.player.sprite);
-   }
+
 
    add(id: string, x: number, y: number, name: string = "Player"): void {
       if (this.map.has(id)) return;
@@ -37,16 +36,27 @@ export class RemotePlayerManager {
 
       this.game.addChild(player.sprite);
       this.game.addChild(label);
-      this.map.set(id, { id, player, label });
+      this.map.set(id, { id, player, label, lastUpdateMs: Date.now() });
       console.log(`Added remote player ${id} at (${x}, ${y})`);
    }
 
    update(id: string, x: number, y: number): void {
       const state = this.map.get(id);
       if (state) {
+         const prevX = state.player.sprite.x;
+         const prevY = state.player.sprite.y;
          this.controller.updatePosition(x, y, state.player);
          state.label.x = state.player.sprite.x;
          state.label.y = state.player.sprite.y - state.player.sprite.height * 0.7;
+         state.lastUpdateMs = Date.now();
+         // If position did not change, mark idle explicitly to prevent stuck animations
+         if (prevX === state.player.sprite.x && prevY === state.player.sprite.y) {
+            if (state.player.isMoving) {
+               state.player.isMoving = false;
+               state.player.sprite.stop();
+               state.player.sprite.gotoAndStop(0);
+            }
+         }
       }
    }
 
@@ -61,14 +71,29 @@ export class RemotePlayerManager {
    }
 
    rename(id: string, name: string): void {
-      let state = this.map.get(id);
-      if (!state) {
-         // Ensure remote exists if a rename arrives before a players/join message
-         this.add(id, 480, 320, name || "Player");
-         state = this.map.get(id);
-      }
-      if (state) {
-         state.label.text = name || "Player";
+      const state = this.map.get(id);
+      if (!state) return;
+      state.label.text = name || "Player";
+   }
+
+   tick(deltaMs: number): void {
+      const now = Date.now();
+      for (const state of this.map.values()) {
+         if (shouldIdle(state.lastUpdateMs, now, this.idleThresholdMs)) {
+            if (state.player.isMoving) {
+               state.player.isMoving = false;
+               state.player.sprite.stop();
+               state.player.sprite.gotoAndStop(0);
+            }
+         }
       }
    }
+
+   getSprites(): PIXI.AnimatedSprite[] {
+      return Array.from(this.map.values()).map(v => v.player.sprite);
+   }
+}
+
+export function shouldIdle(lastUpdateMs: number, nowMs: number, thresholdMs: number): boolean {
+   return nowMs - lastUpdateMs >= thresholdMs;
 }

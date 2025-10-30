@@ -117,8 +117,10 @@ export class Game {
                if (data.id !== this.player.id) manager.update(data.id, data.x, data.y);
                break;
             case "rename":
-            manager.rename?.(data.id, data.name);
-            if (data.id !== this.player.id) this.remoteLabels.set(data.id, data.name || "Player");
+               if (data.id !== this.player.id) {
+                  manager.rename?.(data.id, data.name);
+                  this.remoteLabels.set(data.id, data.name || "Player");
+               }
                break;
             case "leave":
                manager.remove(data.id);
@@ -247,6 +249,10 @@ export class Game {
 
       // Update wild Pokémon
       this.wild?.update(scaledDelta);
+
+      // Idle remote players if no recent updates
+      const dtMs = scaledDelta * 16.6667;
+      this.remoteManager?.tick(dtMs);
    }
 
    private getEntityColliders(excludeWild: boolean = false): PIXI.Rectangle[] {
