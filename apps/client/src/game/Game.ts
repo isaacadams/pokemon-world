@@ -194,7 +194,7 @@ export class Game {
       );
       this.wild.setCollidersProvider(() => this.getEntityColliders(true));
       const species = [
-         { name: "Pikachu", controller: wilds.pikachu, tint: 0x3bdc5a },
+         { name: "Pikachu", controller: wilds.pikachu },
          { name: "Ivysaur", controller: wilds.ivysaur }
       ].filter(s => !!s.controller) as any;
       this.wild.setSpeciesPool(species);
