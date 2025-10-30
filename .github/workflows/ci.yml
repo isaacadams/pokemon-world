@@ -1,0 +1,77 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  server-unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies (workspace)
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Run server unit tests (Jest)
+        run: pnpm -w exec jest apps/server --runInBand
+
+  dst-playwright-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies (workspace)
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Install Playwright browsers
+        run: pnpm -F @repo/dst exec playwright install --with-deps
+
+      - name: Run DST headless Playwright tests
+        run: pnpm -F @repo/dst test
+
+  e2e-playwright-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies (workspace)
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Install e2e test deps and Playwright browsers
+        run: |
+          cd test
+          pnpm install --frozen-lockfile=false
+          ./node_modules/.bin/playwright install --with-deps
+
+      - name: Run root E2E Playwright tests
+        run: |
+          cd test
+          ./node_modules/.bin/playwright test

@@ -5,10 +5,12 @@ import { SpriteController } from "./SpriteController";
 import { PC } from "./PC";
 import { DebugOverlay } from "./DebugOverlay";
 import { RemotePlayerManager } from "./RemotePlayersManager";
+import PlayerData from "./PlayerData";
 import { TileMap } from "@repo/core";
 import map1Data from "@assets/tilesets/map1.tmx";
 import tmxOverworld from "@assets/tilesets/overworld.tmx";
 import pngOverworld from "@assets/tilesets/overworld.png";
+import { WildPokemonManager } from "./WildPokemonManager";
 
 interface Point {
    x: number;
@@ -46,6 +48,9 @@ export class Game {
    private ws?: WebSocket;
    private speedMultiplier: number = 1;
    private paused: boolean = false;
+   private remoteLabels: Map<string, string> = new Map();
+   private wild?: WildPokemonManager;
+   private remoteManager?: RemotePlayerManager;
 
    static overworld() {
       return new TileMap(pngOverworld, tmxOverworld, map1Data);
@@ -57,9 +62,13 @@ export class Game {
          width: window.innerWidth,
          height: window.innerHeight,
          backgroundColor: 0x000000,
-         resizeTo: window
+         resizeTo: window,
+         antialias: false
       });
       console.log("PIXI Application created");
+
+      // Avoid subpixel sampling artifacts when the stage or sprites land on fractional pixels
+      (this.app.renderer as any).roundPixels = true;
 
       this.gameContainer = new PIXI.Container();
       this.app.stage.addChild(this.gameContainer);
@@ -73,7 +82,9 @@ export class Game {
 
    setupWebSocket(controller: SpriteController): void {
       const manager = new RemotePlayerManager(this.gameContainer, controller);
+      this.remoteManager = manager;
       this.ws = new WebSocket(build.websocket);
+      try { (window as any).__fakeWS = this.ws; } catch {}
       this.ws.onopen = () => console.log("Connected to WebSocket server");
 
       this.ws.onmessage = event => {
@@ -83,22 +94,37 @@ export class Game {
             case "init":
                this.player.id = data.id;
                console.log(`Assigned ID: ${this.player.id}`);
+               // Send our display name to the server
+               try {
+                  const local = PlayerData.check();
+                  const name = (local && local.user && local.user.name) ? local.user.name : "Player";
+                  this.ws?.send(JSON.stringify({ type: "hello", name }));
+               } catch {}
                break;
             case "players":
                for (const [id, state] of Object.entries(
-                  data.players as { [key: string]: { id: string; position: { x: number; y: number } } }
+                  data.players as { [key: string]: { id: string; position: { x: number; y: number }; name?: string } }
                )) {
-                  if (id !== this.player.id) manager.add(id, state.position.x, state.position.y);
+                  if (id !== this.player.id)
+                     manager.add(id, state.position.x, state.position.y, state.name || "Player");
+               if (id !== this.player.id) this.remoteLabels.set(id, state.name || "Player");
                }
                break;
             case "join":
-               if (data.id !== this.player.id) manager.add(data.id, data.x, data.y);
+               if (data.id !== this.player.id) manager.add(data.id, data.x, data.y, data.name || "Player");
                break;
             case "update":
                if (data.id !== this.player.id) manager.update(data.id, data.x, data.y);
                break;
+            case "rename":
+               if (data.id !== this.player.id) {
+                  manager.rename?.(data.id, data.name);
+                  this.remoteLabels.set(data.id, data.name || "Player");
+               }
+               break;
             case "leave":
                manager.remove(data.id);
+            this.remoteLabels.delete(data.id);
                break;
          }
       };
@@ -113,6 +139,12 @@ export class Game {
       this.centerGameContainer();
    }
 
+   /**
+    * Debug toggle controls
+    * - Press ` to toggle debugMode on/off
+    *   - Propagates to: debug graphics, PC, TileMap, and DebugOverlay
+    * - Press "v" while in debugMode to toggle verbose logs/overlays
+    */
    private setupEventListeners(): void {
       window.addEventListener("resize", this.onResize.bind(this));
       this.app.ticker.add(this.gameLoop.bind(this));
@@ -150,6 +182,24 @@ export class Game {
          controller
       );
       this.gameContainer.addChild(this.player.sprite);
+      this.gameContainer.addChild(this.player.label);
+   }
+
+   initializeWildMix(wilds: { [key: string]: SpriteController }): void {
+      // Requires tileMap and player to be initialized
+      this.wild = new WildPokemonManager(
+         this.gameContainer,
+         this.tileMap,
+         GAME_CONSTANTS.WORLD_BOUNDS
+      );
+      this.wild.setCollidersProvider(() => this.getEntityColliders(true));
+      const species = [
+         { name: "Pikachu", controller: wilds.pikachu },
+         { name: "Ivysaur", controller: wilds.ivysaur }
+      ].filter(s => !!s.controller) as any;
+      this.wild.setSpeciesPool(species);
+      // Spawn between 5 and 8 mixed Pokémon near player
+      this.wild.spawnRandom(5, 8, { x: this.player.sprite.x, y: this.player.sprite.y });
    }
 
    private initializePokemonCenter(): void {
@@ -177,8 +227,8 @@ export class Game {
       const nextPosition = this.player.getNextPosition(scaledDelta);
       const collisionBox = this.calculateCollisionBox(nextPosition);
 
-      if (collisionBox.canWalk) {
-         const state = this.player.update(scaledDelta);
+      if (collisionBox.canWalk && this.canOccupyEntitySpace(nextPosition)) {
+         const state = this.player.applyNextPosition(nextPosition.x, nextPosition.y);
          // Send position update to server
          if (state.isMoving && !!this.ws && this.ws.readyState === WebSocket.OPEN) {
             const update = JSON.stringify({
@@ -196,6 +246,40 @@ export class Game {
       this.updateDebug(nextPosition, collisionBox);
       // Update player position in debug overlay
       this.debugOverlay.updatePlayerPosition(this.player.sprite.x, this.player.sprite.y);
+
+      // Update wild Pokémon
+      this.wild?.update(scaledDelta);
+
+      // Idle remote players if no recent updates
+      const dtMs = scaledDelta * 16.6667;
+      this.remoteManager?.tick(dtMs);
+   }
+
+   private getEntityColliders(excludeWild: boolean = false): PIXI.Rectangle[] {
+      const rects: PIXI.Rectangle[] = [];
+      // Remote players
+      for (const s of this.remoteManager?.getSprites() || []) {
+         rects.push(s.getBounds());
+      }
+      // Player (for wild collision)
+      if (!excludeWild && this.player?.sprite) rects.push(this.player.sprite.getBounds());
+      // Wild sprites (for player collision)
+      if (!excludeWild) {
+         for (const s of this.wild?.getSprites() || []) rects.push(s.getBounds());
+      }
+      return rects;
+   }
+
+   private canOccupyEntitySpace(position: Point): boolean {
+      const size = GAME_CONSTANTS.PLAYER_SIZE;
+      const left = position.x - size / 2;
+      const top = position.y - size / 2;
+      const rect = new PIXI.Rectangle(left, top, size, size);
+      // Check against other entities (exclude player itself)
+      for (const r of this.getEntityColliders() || []) {
+         if (rect.intersects(r)) return false;
+      }
+      return true;
    }
 
    private updatePCInteraction(): void {
@@ -322,8 +406,9 @@ export class Game {
    }
 
    private centerGameContainer(): void {
-      this.gameContainer.x = (window.innerWidth - GAME_CONSTANTS.WORLD_BOUNDS.width) / 2;
-      this.gameContainer.y = (window.innerHeight - GAME_CONSTANTS.WORLD_BOUNDS.height) / 2;
+      // Align to integer pixels to prevent texture seams between tiles
+      this.gameContainer.x = Math.round((window.innerWidth - GAME_CONSTANTS.WORLD_BOUNDS.width) / 2);
+      this.gameContainer.y = Math.round((window.innerHeight - GAME_CONSTANTS.WORLD_BOUNDS.height) / 2);
    }
 
    private onResize(): void {
@@ -355,6 +440,49 @@ export class Game {
       if (!this.app.ticker.started) {
          console.log("Starting ticker in constructor");
          this.app.ticker.start();
+      }
+   }
+
+   public getPlayerName(): string {
+      try {
+         return (this.player as any)?.label?.text ?? "";
+      } catch {
+         return "";
+      }
+   }
+
+   public getLabelTexts(): string[] {
+      const texts: string[] = [];
+      const root: any = this.gameContainer as any;
+      const walk = (node: any) => {
+         if (!node || !node.children) return;
+         for (const child of node.children) {
+            if (typeof (child as any).text === "string") {
+               texts.push((child as any).text);
+            }
+            walk(child);
+         }
+      };
+      walk(root);
+      // Include any known remote labels (helps in test environments without full rendering)
+      for (const name of this.remoteLabels.values()) {
+         if (!texts.includes(name)) texts.push(name);
+      }
+      return texts;
+   }
+
+   public renameLocalPlayer(name: string): void {
+      const nextName = (name || "").trim();
+      if (!nextName) return;
+      try {
+         // Update local label immediately
+         (this.player as any)?.label && ((this.player as any).label.text = nextName);
+      } catch {}
+      // Notify server so others get the rename broadcast
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+         try {
+            this.ws.send(JSON.stringify({ type: "hello", name: nextName }));
+         } catch {}
       }
    }
 
