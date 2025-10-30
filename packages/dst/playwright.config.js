@@ -26,11 +26,11 @@ module.exports = defineConfig({
 
    // Use a base URL to load your HTML file
    use: {
-      baseURL: "http://localhost:1234",
-      headless: true, // Run in headless mode for CI or faster execution
+      baseURL: "http://localhost:9010",
+      headless: true,
       viewport: { width: 1280, height: 720 },
       actionTimeout: 5000,
-      ignoreHTTPSErrors: true // Ignore HTTPS errors if loading locally
+      ignoreHTTPSErrors: true
    },
 
    // Reporter to display test results
@@ -38,8 +38,8 @@ module.exports = defineConfig({
 
    // WebServer (optional, if you want to serve the HTML file via a local server)
    webServer: {
-      command: "npm run serve",
-      port: 1234,
+      command: "pnpm --filter @pokemon-world/game dev --port 9010",
+      port: 9010,
       reuseExistingServer: true
    }
 });

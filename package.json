@@ -11,11 +11,14 @@
       "build": "turbo run build",
       "test": "turbo run test",
       "format": "prettier -w **/*.{ts,js}",
-      "start:dst": "ts-node -r tsconfig-paths/register src/dst/index.ts"
+      "start:dst": "ts-node -r tsconfig-paths/register src/dst/index.ts",
+      "start:dev": "node packages/dst/scripts/run-scenario.js -- --client --devmode --duration 86400",
+      "start:game": "pnpm -F @pokemon-world/game dev"
    },
    "devDependencies": {
       "@types/jest": "29.5.14",
       "@types/node": "^22.13.10",
+      "assert": "^2.0.0",
       "jest": "^29.7.0",
       "path-browserify": "^1.0.0",
       "pixi.js": "7.4.0",

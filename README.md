@@ -34,6 +34,14 @@ Uses Turborepo to build all packages/apps.
 - `apps/server`: Node WebSocket server (`ws`)
 - `apps/auth`: Express auth prototype
 - `packages/core`: shared game/core logic
+ - `packages/dst`: deterministic simulation testing (DST)
+
+### Docs
+- DST: packages/dst/README.md
+- Client: apps/client/README.md
+- Server: apps/server/README.md
+- Auth: apps/auth/README.md
+- Core: packages/core/README.md
 
 ### Common issues
 - If deps look odd: `pnpm run fresh-install`

@@ -1,14 +1,11 @@
 {
    "name": "@repo/dst",
    "scripts": {
-      "build": "parcel build src/index.html",
-      "serve": "parcel src/index.html",
       "test": "playwright test",
       "snapshots": "npx playwright test --update-snapshots"
    },
    "dependencies": {
       "@repo/core": "workspace:*",
-      "parcel": "^2.13.3",
       "seedrandom": "^3.0.5"
    },
    "devDependencies": {

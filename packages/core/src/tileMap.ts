@@ -134,59 +134,10 @@ export class TileMap {
       for (let layer = 0; layer < this.tiles.length; layer++) {
          const tile = this.xTiles[layer][y][x];
          if (!tile) continue;
-         //console.log(tile);
-         return !tile.tile.config.impassable;
-
-         //const tileX = Math.floor(tile.texture.frame.x / this.tileSize);
-         //const tileY = Math.floor(tile.texture.frame.y / this.tileSize);
-         //const tileId = tileY * 8 + tileX + 1;
-         //
-         //if (this.debugMode && this.verboseMode) {
-         //   console.log(`Checking tile at (${x},${y}) Layer ${layer}: ID=${tileId}`);
-         //}
-         //
-         //const tileElement = this.tilesetConfig.getElement(tileId);
-         //if (tileElement) {
-         //   const canWalkProperty = tileElement.querySelector('property[name="canWalk"]');
-         //   if (canWalkProperty && canWalkProperty.getAttribute("value") === "true") {
-         //      continue;
-         //   }
-         //}
-         //
-         //if (tileElement) {
-         //   const e = new TileElement(tileId, tileElement);
-         //   if (e.impassable()) {
-         //      return false;
-         //   }
-         //}
-         //
-         //const nonWalkableTiles = [
-         //   // pokemon center
-         //   [105, 109],
-         //   [113, 117],
-         //   [121, 125],
-         //   [129, 133],
-         //   [137, 141],
-         //
-         //   // the big rocks
-         //   [346, 348],
-         //   [354, 356],
-         //   [362, 364],
-         //
-         //   // pink trees
-         //   [721, 723],
-         //   [729, 731],
-         //   [737, 739],
-         //
-         //   // trees
-         //   [801, 802],
-         //   [809, 810]
-         //];
-         //
-         //for (const range of nonWalkableTiles) {
-         //   if (range.length === 1 && tileId === range[0]) return false;
-         //   if (range.length === 2 && tileId >= range[0] && tileId <= range[1]) return false;
-         //}
+         // If any layer marks the tile impassable, block walking
+        if (tile.tile.config.impassable) {
+           return false;
+        }
       }
       return true;
    }
