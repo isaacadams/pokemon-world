@@ -384,6 +384,22 @@ export class Game {
       }
    }
 
+   public getLabelTexts(): string[] {
+      const texts: string[] = [];
+      const root: any = this.gameContainer as any;
+      const walk = (node: any) => {
+         if (!node || !node.children) return;
+         for (const child of node.children) {
+            if (typeof (child as any).text === "string") {
+               texts.push((child as any).text);
+            }
+            walk(child);
+         }
+      };
+      walk(root);
+      return texts;
+   }
+
    // Dev controls
    public setSpeedMultiplier(multiplier: number): void {
       this.speedMultiplier = Math.max(0, multiplier);
