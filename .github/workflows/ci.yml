@@ -73,7 +73,7 @@ jobs:
       - name: Install Playwright browsers
         run: |
           cd test
-          pnpm exec playwright install --with-deps
+          npx playwright install --with-deps
 
       - name: Run root E2E Playwright tests
         run: |
