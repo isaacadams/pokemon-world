@@ -69,9 +69,9 @@ jobs:
         run: |
           cd test
           pnpm install --frozen-lockfile=false
-          npx playwright install --with-deps
+          ./node_modules/.bin/playwright install --with-deps
 
       - name: Run root E2E Playwright tests
         run: |
           cd test
-          npx playwright test
+          ./node_modules/.bin/playwright test
