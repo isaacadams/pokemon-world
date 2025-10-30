@@ -1,10 +1,8 @@
 name: DST Headless Tests
 
 on:
-  push:
-    branches: [ main, '**/*' ]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
@@ -29,5 +27,3 @@ jobs:
 
       - name: Run headless Playwright tests
         run: pnpm -F @repo/dst test
-
-
