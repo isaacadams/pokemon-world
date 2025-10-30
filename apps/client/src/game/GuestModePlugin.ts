@@ -45,6 +45,10 @@ export class GuestModePlugin {
       const value = (this.htmlInput?.value ?? this.inputValue).trim();
       if (value) {
          PlayerData.set(PlayerData.createDefaultData(value));
+         // Update in-game label immediately and notify server
+         try {
+            (this.game as any)?.renameLocalPlayer?.(value);
+         } catch {}
          this.cleanupDialog();
       }
    }

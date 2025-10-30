@@ -400,6 +400,21 @@ export class Game {
       return texts;
    }
 
+   public renameLocalPlayer(name: string): void {
+      const nextName = (name || "").trim();
+      if (!nextName) return;
+      try {
+         // Update local label immediately
+         (this.player as any)?.label && ((this.player as any).label.text = nextName);
+      } catch {}
+      // Notify server so others get the rename broadcast
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+         try {
+            this.ws.send(JSON.stringify({ type: "hello", name: nextName }));
+         } catch {}
+      }
+   }
+
    // Dev controls
    public setSpeedMultiplier(multiplier: number): void {
       this.speedMultiplier = Math.max(0, multiplier);
