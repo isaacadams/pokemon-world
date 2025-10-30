@@ -1,4 +1,48 @@
+## Pokemon World (Monorepo)
+
+Terse quickstart for getting the app running locally.
+
+### Prerequisites
+- Node.js 18+ (LTS recommended)
+- pnpm 10+ (`corepack enable` or `npm i -g pnpm`)
+
+### Install
+```bash
+pnpm install
+```
+
+### Run (development)
+- Client (PixiJS game):
+```bash
+pnpm --filter @pokemon-world/game dev
+```
+  - Opens dev server via webpack-dev-server.
+
+- Server (WebSocket):
+```bash
+node apps/server/server.js
+```
+
+### Build
+```bash
+pnpm build
+```
+Uses Turborepo to build all packages/apps.
+
+### Repo structure
+- `apps/client`: browser client (webpack, PixiJS)
+- `apps/server`: Node WebSocket server (`ws`)
+- `apps/auth`: Express auth prototype
+- `packages/core`: shared game/core logic
+
+### Common issues
+- If deps look odd: `pnpm run fresh-install`
+- Port conflicts: stop prior webpack/dev servers
+
+### Deployed demo
 site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
+
+---
 
 ## Sprites / Tilesets
 
