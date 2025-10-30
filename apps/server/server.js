@@ -6,6 +6,9 @@ const WebSocket = require("ws");
 const server = new WebSocket.Server({ port: config.port });
 
 // Heartbeat/idle-timeout: terminate unresponsive clients to avoid ghost players
+// Modes:
+//  - Default (ping): use WS ping/pong to detect liveness
+//  - Message (env WS_HEARTBEAT_MODE=message): treat client liveness as any message activity
 function markAlive() {
    this.isAlive = true;
 }
@@ -53,6 +56,7 @@ server.on("connection", ws => {
    // Initialize heartbeat state and pong handler
    ws.isAlive = true;
    ws.on("pong", markAlive);
+   ws.lastActivityMs = Date.now();
 
    const player = manager.add(ws);
 
@@ -76,6 +80,7 @@ server.on("connection", ws => {
    ws.on("message", message => {
       // Any message counts as activity
       ws.isAlive = true;
+      ws.lastActivityMs = Date.now();
       const data = JSON.parse(message);
       if (data.type === "update") {
          // Update player position
@@ -121,9 +126,21 @@ console.log(`WebSocket server running on ws://localhost:${config.port}`);
 
 // Periodically ping clients; terminate those that fail to respond
 const HEARTBEAT_INTERVAL_MS = Number(process.env.WS_HEARTBEAT_INTERVAL_MS || 30000);
+const IDLE_TIMEOUT_MS = Number(process.env.WS_IDLE_TIMEOUT_MS || 60000);
+const HEARTBEAT_MODE = String(process.env.WS_HEARTBEAT_MODE || "ping");
 const heartbeatInterval = setInterval(() => {
    server.clients.forEach(ws => {
       if (ws.readyState !== WebSocket.OPEN) return;
+      if (HEARTBEAT_MODE === "message") {
+         const last = ws.lastActivityMs || 0;
+         if (Date.now() - last > IDLE_TIMEOUT_MS) {
+            try {
+               ws.terminate();
+            } catch {}
+         }
+         return;
+      }
+
       if (ws.isAlive === false) {
          // Unresponsive; terminate. 'close' handler will clean up player and broadcast.
          try {
