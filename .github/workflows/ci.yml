@@ -65,13 +65,15 @@ jobs:
       - name: Install dependencies (workspace)
         run: pnpm install --frozen-lockfile=false
 
-      - name: Install Playwright browsers (package bin)
-        run: pnpm -F test exec playwright install --with-deps
-
-      - name: Install e2e test deps (skip scripts)
+      - name: Install e2e test deps
         run: |
           cd test
           pnpm install --frozen-lockfile=false --ignore-scripts
+
+      - name: Install Playwright browsers
+        run: |
+          cd test
+          pnpm exec playwright install --with-deps
 
       - name: Run root E2E Playwright tests
         run: |
