@@ -27,6 +27,10 @@ export class TileMap {
       //console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
       this.tilesetConfig = new TileSet(tilesTmxPath);
       this.tilesetTexture = PIXI.BaseTexture.from(tilesImagePath);
+      // Ensure crisp sampling to avoid seams between tiles
+      this.tilesetTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+      this.tilesetTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
+      this.tilesetTexture.wrapMode = PIXI.WRAP_MODES.CLAMP;
 
       const factory = new TileSetFactory(this.tilesetTexture, 32);
       overworld(factory);

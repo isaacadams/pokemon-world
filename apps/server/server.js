@@ -5,6 +5,11 @@ const config = {
 const WebSocket = require("ws");
 const server = new WebSocket.Server({ port: config.port });
 
+// Heartbeat/idle-timeout: terminate unresponsive clients to avoid ghost players
+function markAlive() {
+   this.isAlive = true;
+}
+
 /***
  * TODO:
  *
@@ -45,6 +50,10 @@ class PlayerStateManager {
 const manager = new PlayerStateManager();
 
 server.on("connection", ws => {
+   // Initialize heartbeat state and pong handler
+   ws.isAlive = true;
+   ws.on("pong", markAlive);
+
    const player = manager.add(ws);
 
    console.log(`Player ${player.id} connected`);
@@ -65,6 +74,8 @@ server.on("connection", ws => {
    broadcast({ type: "join", id: player.id, x: player.position.x, y: player.position.y, name: player.name });
 
    ws.on("message", message => {
+      // Any message counts as activity
+      ws.isAlive = true;
       const data = JSON.parse(message);
       if (data.type === "update") {
          // Update player position
@@ -88,6 +99,10 @@ server.on("connection", ws => {
       broadcast({ type: "leave", id: player.id });
       console.log(`Player ${player.id} disconnected`);
    });
+
+   ws.on("error", err => {
+      console.error(`WebSocket error for player ${player.id}:`, err?.message || err);
+   });
 });
 
 function broadcast(message, excludeWs = null) {
@@ -103,3 +118,26 @@ function generateUniqueId() {
 }
 
 console.log(`WebSocket server running on ws://localhost:${config.port}`);
+
+// Periodically ping clients; terminate those that fail to respond
+const HEARTBEAT_INTERVAL_MS = Number(process.env.WS_HEARTBEAT_INTERVAL_MS || 30000);
+const heartbeatInterval = setInterval(() => {
+   server.clients.forEach(ws => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      if (ws.isAlive === false) {
+         // Unresponsive; terminate. 'close' handler will clean up player and broadcast.
+         try {
+            ws.terminate();
+         } catch {}
+         return;
+      }
+      ws.isAlive = false;
+      try {
+         ws.ping();
+      } catch {}
+   });
+}, HEARTBEAT_INTERVAL_MS);
+
+server.on("close", () => {
+   clearInterval(heartbeatInterval);
+});

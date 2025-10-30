@@ -58,9 +58,13 @@ export class Game {
          width: window.innerWidth,
          height: window.innerHeight,
          backgroundColor: 0x000000,
-         resizeTo: window
+         resizeTo: window,
+         antialias: false
       });
       console.log("PIXI Application created");
+
+      // Avoid subpixel sampling artifacts when the stage or sprites land on fractional pixels
+      (this.app.renderer as any).roundPixels = true;
 
       this.gameContainer = new PIXI.Container();
       this.app.stage.addChild(this.gameContainer);
@@ -340,8 +344,9 @@ export class Game {
    }
 
    private centerGameContainer(): void {
-      this.gameContainer.x = (window.innerWidth - GAME_CONSTANTS.WORLD_BOUNDS.width) / 2;
-      this.gameContainer.y = (window.innerHeight - GAME_CONSTANTS.WORLD_BOUNDS.height) / 2;
+      // Align to integer pixels to prevent texture seams between tiles
+      this.gameContainer.x = Math.round((window.innerWidth - GAME_CONSTANTS.WORLD_BOUNDS.width) / 2);
+      this.gameContainer.y = Math.round((window.innerHeight - GAME_CONSTANTS.WORLD_BOUNDS.height) / 2);
    }
 
    private onResize(): void {
