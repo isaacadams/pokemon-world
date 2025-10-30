@@ -1,5 +1,5 @@
 const config = {
-   port: Number(process.env.port || 8080)
+   port: Number(process.env.PORT || process.env.port || 8080)
 };
 
 const WebSocket = require("ws");
@@ -14,7 +14,9 @@ const server = new WebSocket.Server({ port: config.port });
 
 class PlayerState {
    id;
-   position = { x: 0, y: 0 };
+   // Spawn players at world center to be visible to others immediately
+   position = { x: 480, y: 320 };
+   name = "Player";
    ws;
 
    constructor(id, ws) {
@@ -35,7 +37,7 @@ class PlayerStateManager {
 
    players() {
       return Object.fromEntries(
-         [...this.map.values()].map(player => [player.id, { id: player.id, position: player.position }])
+         [...this.map.values()].map(player => [player.id, { id: player.id, position: player.position, name: player.name }])
       );
    }
 }
@@ -59,8 +61,8 @@ server.on("connection", ws => {
       })
    );
 
-   // Notify all players of the new connection
-   broadcast({ type: "join", id: player.id, x: player.position.x, y: player.position.y });
+   // Notify all players of the new connection (name may be updated later via "hello")
+   broadcast({ type: "join", id: player.id, x: player.position.x, y: player.position.y, name: player.name });
 
    ws.on("message", message => {
       const data = JSON.parse(message);
@@ -71,6 +73,13 @@ server.on("connection", ws => {
 
          // Broadcast to all other players
          broadcast({ type: "update", id: data.id, x: data.x, y: data.y }, ws);
+      } else if (data.type === "hello") {
+         // Client provides display name after connection
+         if (typeof data.name === "string" && data.name.trim().length > 0) {
+            player.name = data.name.trim().slice(0, 40);
+            // Inform all clients of this player's name
+            broadcast({ type: "rename", id: player.id, name: player.name });
+         }
       }
    });
 
@@ -93,4 +102,4 @@ function generateUniqueId() {
    return Math.random().toString(36).substring(2, 9);
 }
 
-console.log("WebSocket server running on ws://localhost:8080");
+console.log(`WebSocket server running on ws://localhost:${config.port}`);

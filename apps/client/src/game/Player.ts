@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import { PlayerState, SpriteController } from "./SpriteController";
+import PlayerData from "./PlayerData";
 
 interface Point {
    x: number;
@@ -11,6 +12,7 @@ export class Player {
    private speed: number = 5;
    private keys: { [key: string]: boolean } = {};
    private state: PlayerState;
+   private nameLabel: PIXI.Text;
 
    constructor(
       x: number,
@@ -23,6 +25,20 @@ export class Player {
          sprite: this.controller.create(x, y)
       };
       this.state.sprite.tint = 0xff0000; // Red for local player
+
+      const localData = PlayerData.check();
+      const displayName = localData?.user?.name || "Player";
+      this.nameLabel = new PIXI.Text(displayName, {
+         fontFamily: "Arial",
+         fontSize: 14,
+         fill: 0xffffff,
+         stroke: 0x000000,
+         strokeThickness: 3,
+         align: "center"
+      } as any);
+      (this.nameLabel as any).anchor?.set?.(0.5, 1);
+      this.nameLabel.x = this.state.sprite.x;
+      this.nameLabel.y = this.state.sprite.y - this.state.sprite.height * 0.7;
 
       window.addEventListener("keydown", this.onKeyDown.bind(this));
       window.addEventListener("keyup", this.onKeyUp.bind(this));
@@ -51,6 +67,9 @@ export class Player {
    public update(delta: number): PlayerState {
       const nextPos = this.getNextPosition(delta);
       this.controller.updatePosition(nextPos.x, nextPos.y, this.state);
+      // Keep the name label positioned above the sprite
+      this.nameLabel.x = this.state.sprite.x;
+      this.nameLabel.y = this.state.sprite.y - this.state.sprite.height * 0.7;
       return this.state;
    }
 
@@ -60,5 +79,9 @@ export class Player {
 
    public get sprite(): PIXI.AnimatedSprite {
       return this.state.sprite;
+   }
+
+   public get label(): PIXI.Text {
+      return this.nameLabel;
    }
 }

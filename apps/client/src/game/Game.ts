@@ -5,6 +5,7 @@ import { SpriteController } from "./SpriteController";
 import { PC } from "./PC";
 import { DebugOverlay } from "./DebugOverlay";
 import { RemotePlayerManager } from "./RemotePlayersManager";
+import PlayerData from "./PlayerData";
 import { TileMap } from "@repo/core";
 import map1Data from "@assets/tilesets/map1.tmx";
 import tmxOverworld from "@assets/tilesets/overworld.tmx";
@@ -83,19 +84,29 @@ export class Game {
             case "init":
                this.player.id = data.id;
                console.log(`Assigned ID: ${this.player.id}`);
+               // Send our display name to the server
+               try {
+                  const local = PlayerData.check();
+                  const name = (local && local.user && local.user.name) ? local.user.name : "Player";
+                  this.ws?.send(JSON.stringify({ type: "hello", name }));
+               } catch {}
                break;
             case "players":
                for (const [id, state] of Object.entries(
-                  data.players as { [key: string]: { id: string; position: { x: number; y: number } } }
+                  data.players as { [key: string]: { id: string; position: { x: number; y: number }; name?: string } }
                )) {
-                  if (id !== this.player.id) manager.add(id, state.position.x, state.position.y);
+                  if (id !== this.player.id)
+                     manager.add(id, state.position.x, state.position.y, state.name || "Player");
                }
                break;
             case "join":
-               if (data.id !== this.player.id) manager.add(data.id, data.x, data.y);
+               if (data.id !== this.player.id) manager.add(data.id, data.x, data.y, data.name || "Player");
                break;
             case "update":
                if (data.id !== this.player.id) manager.update(data.id, data.x, data.y);
+               break;
+            case "rename":
+               manager.rename?.(data.id, data.name);
                break;
             case "leave":
                manager.remove(data.id);
@@ -113,6 +124,12 @@ export class Game {
       this.centerGameContainer();
    }
 
+   /**
+    * Debug toggle controls
+    * - Press ` to toggle debugMode on/off
+    *   - Propagates to: debug graphics, PC, TileMap, and DebugOverlay
+    * - Press "v" while in debugMode to toggle verbose logs/overlays
+    */
    private setupEventListeners(): void {
       window.addEventListener("resize", this.onResize.bind(this));
       this.app.ticker.add(this.gameLoop.bind(this));
@@ -150,6 +167,7 @@ export class Game {
          controller
       );
       this.gameContainer.addChild(this.player.sprite);
+      this.gameContainer.addChild(this.player.label);
    }
 
    private initializePokemonCenter(): void {
@@ -355,6 +373,14 @@ export class Game {
       if (!this.app.ticker.started) {
          console.log("Starting ticker in constructor");
          this.app.ticker.start();
+      }
+   }
+
+   public getPlayerName(): string {
+      try {
+         return (this.player as any)?.label?.text ?? "";
+      } catch {
+         return "";
       }
    }
 

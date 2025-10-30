@@ -50,6 +50,25 @@ Uses Turborepo to build all packages/apps.
 ### Deployed demo
 site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
 
+### Deploy (infra + client)
+
+1) Deploy infrastructure (S3 website + EC2 WebSocket server) with SAM
+```bash
+sam deploy
+```
+
+2) Build the client and upload to the S3 website bucket
+```bash
+pnpm -F @pokemon-world/game build
+aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/ --delete
+```
+
+- You are hitting the S3 Website endpoint directly, so no CloudFront invalidation is needed.
+- Shortcut (Nushell):
+```bash
+nu -c 'use ./commands.nu *; main upload client'
+```
+
 ---
 
 ## Sprites / Tilesets
