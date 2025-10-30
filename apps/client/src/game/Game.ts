@@ -50,6 +50,7 @@ export class Game {
    private paused: boolean = false;
    private remoteLabels: Map<string, string> = new Map();
    private wild?: WildPokemonManager;
+   private remoteManager?: RemotePlayerManager;
 
    static overworld() {
       return new TileMap(pngOverworld, tmxOverworld, map1Data);
@@ -81,6 +82,7 @@ export class Game {
 
    setupWebSocket(controller: SpriteController): void {
       const manager = new RemotePlayerManager(this.gameContainer, controller);
+      this.remoteManager = manager;
       this.ws = new WebSocket(build.websocket);
       try { (window as any).__fakeWS = this.ws; } catch {}
       this.ws.onopen = () => console.log("Connected to WebSocket server");
@@ -179,15 +181,23 @@ export class Game {
       );
       this.gameContainer.addChild(this.player.sprite);
       this.gameContainer.addChild(this.player.label);
+   }
 
-      // Initialize wild Pokémon after player is ready (controller available)
+   initializeWildMix(wilds: { [key: string]: SpriteController }): void {
+      // Requires tileMap and player to be initialized
       this.wild = new WildPokemonManager(
          this.gameContainer,
-         controller,
          this.tileMap,
          GAME_CONSTANTS.WORLD_BOUNDS
       );
-      this.wild.spawn(6, { x: this.player.sprite.x, y: this.player.sprite.y });
+      this.wild.setCollidersProvider(() => this.getEntityColliders(true));
+      const species = [
+         { name: "Pikachu", controller: wilds.pikachu, tint: 0x3bdc5a },
+         { name: "Ivysaur", controller: wilds.ivysaur }
+      ].filter(s => !!s.controller) as any;
+      this.wild.setSpeciesPool(species);
+      // Spawn between 5 and 8 mixed Pokémon near player
+      this.wild.spawnRandom(5, 8, { x: this.player.sprite.x, y: this.player.sprite.y });
    }
 
    private initializePokemonCenter(): void {
@@ -215,7 +225,7 @@ export class Game {
       const nextPosition = this.player.getNextPosition(scaledDelta);
       const collisionBox = this.calculateCollisionBox(nextPosition);
 
-      if (collisionBox.canWalk) {
+      if (collisionBox.canWalk && this.canOccupyEntitySpace(nextPosition)) {
          const state = this.player.applyNextPosition(nextPosition.x, nextPosition.y);
          // Send position update to server
          if (state.isMoving && !!this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -237,6 +247,33 @@ export class Game {
 
       // Update wild Pokémon
       this.wild?.update(scaledDelta);
+   }
+
+   private getEntityColliders(excludeWild: boolean = false): PIXI.Rectangle[] {
+      const rects: PIXI.Rectangle[] = [];
+      // Remote players
+      for (const s of this.remoteManager?.getSprites() || []) {
+         rects.push(s.getBounds());
+      }
+      // Player (for wild collision)
+      if (!excludeWild && this.player?.sprite) rects.push(this.player.sprite.getBounds());
+      // Wild sprites (for player collision)
+      if (!excludeWild) {
+         for (const s of this.wild?.getSprites() || []) rects.push(s.getBounds());
+      }
+      return rects;
+   }
+
+   private canOccupyEntitySpace(position: Point): boolean {
+      const size = GAME_CONSTANTS.PLAYER_SIZE;
+      const left = position.x - size / 2;
+      const top = position.y - size / 2;
+      const rect = new PIXI.Rectangle(left, top, size, size);
+      // Check against other entities (exclude player itself)
+      for (const r of this.getEntityColliders() || []) {
+         if (rect.intersects(r)) return false;
+      }
+      return true;
    }
 
    private updatePCInteraction(): void {

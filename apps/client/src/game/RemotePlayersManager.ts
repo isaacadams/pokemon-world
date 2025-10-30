@@ -10,6 +10,10 @@ export class RemotePlayerManager {
       this.map = new Map();
    }
 
+   getSprites(): PIXI.AnimatedSprite[] {
+      return Array.from(this.map.values()).map(v => v.player.sprite);
+   }
+
    add(id: string, x: number, y: number, name: string = "Player"): void {
       if (this.map.has(id)) return;
 

@@ -12,52 +12,71 @@ interface WildPokemon {
    speed: number;
    dir: Direction;
    changeDirCooldownMs: number;
+   controller: SpriteController;
+}
+
+export interface Species {
+   name: string;
+   controller: SpriteController;
+   tint?: number;
 }
 
 export class WildPokemonManager {
    private pokemons: WildPokemon[] = [];
+   private collidersProvider?: () => PIXI.Rectangle[];
+   private speciesPool: Species[] = [];
 
    constructor(
       private container: PIXI.Container,
-      private controller: SpriteController,
       private tileMap: TileMap,
       private worldBounds: { x: number; y: number; width: number; height: number }
    ) {}
 
-   public spawn(count: number, around: Point): void {
+   public setSpeciesPool(species: Species[]): void {
+      this.speciesPool = species.slice();
+   }
+
+   public spawnRandom(minCount: number, maxCount: number, around: Point): void {
+      const count = Math.max(minCount, Math.min(maxCount, Math.floor(Math.random() * (maxCount - minCount + 1)) + minCount));
       for (let i = 0; i < count; i++) {
-         const spawnPoint = this.findNearbyWalkable(around, 6);
-         const state: PlayerState = {
-            currentDirection: "down",
-            isMoving: false,
-            sprite: this.controller.create(spawnPoint.x, spawnPoint.y)
-         };
-         // Tint to green-ish to distinguish wild mons
-         state.sprite.tint = 0x3bdc5a;
-
-         const label = new PIXI.Text("Wild", {
-            fontFamily: "Arial",
-            fontSize: 12,
-            fill: 0xffffff,
-            stroke: 0x000000,
-            strokeThickness: 3,
-            align: "center"
-         } as any);
-         (label as any).anchor?.set?.(0.5, 1);
-         label.x = state.sprite.x;
-         label.y = state.sprite.y - state.sprite.height * 0.7;
-
-         this.container.addChild(state.sprite);
-         this.container.addChild(label);
-
-         this.pokemons.push({
-            state,
-            label,
-            speed: 2.5,
-            dir: this.randomDirection(),
-            changeDirCooldownMs: this.randomMs(600, 2000)
-         });
+         const pick = this.speciesPool[Math.floor(Math.random() * this.speciesPool.length)];
+         if (!pick) continue;
+         this.spawnOne(pick, around);
       }
+   }
+
+   public spawnOne(species: Species, around: Point): void {
+      const spawnPoint = this.findNearbyWalkable(around, 6);
+      const state: PlayerState = {
+         currentDirection: "down",
+         isMoving: false,
+         sprite: species.controller.create(spawnPoint.x, spawnPoint.y)
+      };
+      if (species.tint) state.sprite.tint = species.tint;
+
+      const label = new PIXI.Text(species.name, {
+         fontFamily: "Arial",
+         fontSize: 12,
+         fill: 0xffffff,
+         stroke: 0x000000,
+         strokeThickness: 3,
+         align: "center"
+      } as any);
+      (label as any).anchor?.set?.(0.5, 1);
+      label.x = state.sprite.x;
+      label.y = state.sprite.y - state.sprite.height * 0.7;
+
+      this.container.addChild(state.sprite);
+      this.container.addChild(label);
+
+      this.pokemons.push({
+         state,
+         label,
+         speed: 1.5,
+         dir: this.randomDirection(),
+         changeDirCooldownMs: this.randomMs(600, 2000),
+         controller: species.controller
+      });
    }
 
    public update(delta: number): void {
@@ -65,22 +84,36 @@ export class WildPokemonManager {
       for (const p of this.pokemons) {
          p.changeDirCooldownMs -= dtMs;
          if (p.changeDirCooldownMs <= 0) {
-            // Occasionally idle instead of moving
             p.dir = Math.random() < 0.2 ? this.randomDirection() : this.randomDirection();
             p.changeDirCooldownMs = this.randomMs(600, 2000);
          }
 
-         const next = this.nextPosition(p.state.sprite.x, p.state.sprite.y, p.dir, p.speed * delta);
+         const prevX = p.state.sprite.x;
+         const prevY = p.state.sprite.y;
+         const next = this.nextPosition(prevX, prevY, p.dir, p.speed * delta);
          if (this.canWalk({ x: next.x, y: next.y })) {
-            this.controller.updatePosition(next.x, next.y, p.state);
+            // Use species controller so direction/animation stays correct
+            p.controller.updatePosition(next.x, next.y, p.state);
             p.label.x = p.state.sprite.x;
             p.label.y = p.state.sprite.y - p.state.sprite.height * 0.7;
          } else {
-            // Flip direction when blocked
             p.dir = this.randomDirection(p.dir);
             p.changeDirCooldownMs = this.randomMs(300, 1200);
+            if (p.state.isMoving) {
+               p.state.isMoving = false;
+               p.state.sprite.stop();
+               p.state.sprite.gotoAndStop(0);
+            }
          }
       }
+   }
+
+   public setCollidersProvider(provider: () => PIXI.Rectangle[]): void {
+      this.collidersProvider = provider;
+   }
+
+   public getSprites(): PIXI.AnimatedSprite[] {
+      return this.pokemons.map(p => p.state.sprite);
    }
 
    private nextPosition(x: number, y: number, dir: Direction, distance: number): Point {
@@ -91,7 +124,6 @@ export class WildPokemonManager {
    }
 
    private canWalk(position: Point): boolean {
-      // Emulate Game collision sampling with four inner points
       const size = 32; // matches PLAYER_SIZE used for sprite footprints
       const margin = 8; // COLLISION_MARGIN
       const left = position.x - size / 2;
@@ -107,7 +139,15 @@ export class WildPokemonManager {
          x: Math.floor(pt.x / this.tileMap.getTileSize()),
          y: Math.floor(pt.y / this.tileMap.getTileSize())
       }));
-      return tiles.every(t => this.tileMap.isTileWalkable(t.x, t.y));
+      if (!tiles.every(t => this.tileMap.isTileWalkable(t.x, t.y))) return false;
+      if (this.collidersProvider) {
+         const rect = new PIXI.Rectangle(left, top, size, size);
+         const others = this.collidersProvider();
+         for (const r of others) {
+            if (rect.intersects(r)) return false;
+         }
+      }
+      return true;
    }
 
    private isWithinBounds(position: Point): boolean {
@@ -129,7 +169,6 @@ export class WildPokemonManager {
          const candidate = { x: center.x + dx, y: center.y + dy };
          if (this.canWalk(candidate)) return candidate;
       }
-      // Fallback to center
       return center;
    }
 
