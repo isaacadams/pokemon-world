@@ -196,7 +196,7 @@ export class Game {
       const collisionBox = this.calculateCollisionBox(nextPosition);
 
       if (collisionBox.canWalk) {
-         const state = this.player.update(scaledDelta);
+         const state = this.player.applyNextPosition(nextPosition.x, nextPosition.y);
          // Send position update to server
          if (state.isMoving && !!this.ws && this.ws.readyState === WebSocket.OPEN) {
             const update = JSON.stringify({

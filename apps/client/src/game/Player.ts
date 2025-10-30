@@ -73,6 +73,13 @@ export class Player {
       return this.state;
    }
 
+   public applyNextPosition(x: number, y: number): PlayerState {
+      this.controller.updatePosition(x, y, this.state);
+      this.nameLabel.x = this.state.sprite.x;
+      this.nameLabel.y = this.state.sprite.y - this.state.sprite.height * 0.7;
+      return this.state;
+   }
+
    public getBounds(): PIXI.Rectangle {
       return this.state.sprite.getBounds();
    }
