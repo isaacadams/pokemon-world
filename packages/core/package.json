@@ -4,7 +4,7 @@
    "type": "module",
    "main": "src/index.ts",
    "dependencies": {
-      "pixi.js": "^7.4.0"
+      "pixi.js": "^8.22.0"
    },
    "private": true,
    "scripts": {}

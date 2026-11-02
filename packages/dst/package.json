@@ -8,10 +8,11 @@
    },
    "dependencies": {
       "@repo/core": "workspace:*",
+      "pixi.js": "^8.22.0",
       "seedrandom": "^3.0.5"
    },
    "devDependencies": {
-      "@playwright/test": "^1.51.0",
+      "@playwright/test": "^1.64.1",
       "@types/seedrandom": "^3.0.8"
    }
 }

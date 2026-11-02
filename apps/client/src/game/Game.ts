@@ -36,6 +36,8 @@ const GAME_CONSTANTS = {
 
 export class Game {
    private app: PIXI.Application;
+   /** Resolves once the renderer and ticker exist (PIXI v8 initializes asynchronously). */
+   readonly ready: Promise<void>;
    private player!: Player;
 
    private pc!: PC;
@@ -58,17 +60,17 @@ export class Game {
 
    constructor() {
       console.log("Game constructor called");
-      this.app = new PIXI.Application({
+      this.app = new PIXI.Application();
+      this.ready = this.app.init({
          width: window.innerWidth,
          height: window.innerHeight,
-         backgroundColor: 0x000000,
+         background: 0x000000,
          resizeTo: window,
-         antialias: false
+         antialias: false,
+         // Avoid subpixel sampling artifacts when the stage or sprites land on fractional pixels
+         roundPixels: true
       });
       console.log("PIXI Application created");
-
-      // Avoid subpixel sampling artifacts when the stage or sprites land on fractional pixels
-      (this.app.renderer as any).roundPixels = true;
 
       this.gameContainer = new PIXI.Container();
       this.app.stage.addChild(this.gameContainer);
@@ -147,7 +149,7 @@ export class Game {
     */
    private setupEventListeners(): void {
       window.addEventListener("resize", this.onResize.bind(this));
-      this.app.ticker.add(this.gameLoop.bind(this));
+      this.app.ticker.add(ticker => this.gameLoop(ticker.deltaTime));
 
       window.addEventListener("keydown", (e: KeyboardEvent) => {
          if (e.key === "`") {
@@ -206,6 +208,7 @@ export class Game {
       this.pc = new PC(100, 100, this.debugMode);
       this.gameContainer.addChild(this.pc.getInteractionZone());
       this.gameContainer.addChild(this.pc.sprite);
+      this.gameContainer.addChild(this.pc.getDebugText());
       this.app.stage.addChild(this.pc.getInterface());
    }
 
@@ -259,13 +262,13 @@ export class Game {
       const rects: PIXI.Rectangle[] = [];
       // Remote players
       for (const s of this.remoteManager?.getSprites() || []) {
-         rects.push(s.getBounds());
+         rects.push(s.getBounds().rectangle);
       }
       // Player (for wild collision)
-      if (!excludeWild && this.player?.sprite) rects.push(this.player.sprite.getBounds());
+      if (!excludeWild && this.player?.sprite) rects.push(this.player.sprite.getBounds().rectangle);
       // Wild sprites (for player collision)
       if (!excludeWild) {
-         for (const s of this.wild?.getSprites() || []) rects.push(s.getBounds());
+         for (const s of this.wild?.getSprites() || []) rects.push(s.getBounds().rectangle);
       }
       return rects;
    }
@@ -361,37 +364,32 @@ export class Game {
       for (let y = 0; y < mapHeight; y++) {
          for (let x = 0; x < mapWidth; x++) {
             const isWalkable = this.tileMap.isTileWalkable(x, y);
-            this.debugGraphics.lineStyle(1, isWalkable ? 0x00ff00 : 0xff0000, 0.3);
-            this.debugGraphics.drawRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            this.debugGraphics
+               .rect(x * tileSize, y * tileSize, tileSize, tileSize)
+               .stroke({ width: 1, color: isWalkable ? 0x00ff00 : 0xff0000, alpha: 0.3 });
          }
       }
    }
 
    private drawCollisionBox(collisionBox: CollisionBox): void {
-      // Draw collision box outline
-      this.debugGraphics.lineStyle(2, collisionBox.canWalk ? 0x00ff00 : 0xff0000, 1);
-
-      // Draw lines between points
+      // Draw collision box outline (lines between points)
       const { points } = collisionBox;
       this.debugGraphics.moveTo(points[0].x, points[0].y);
       points.slice(1).forEach(point => {
          this.debugGraphics.lineTo(point.x, point.y);
       });
       this.debugGraphics.lineTo(points[0].x, points[0].y);
+      this.debugGraphics.stroke({ width: 2, color: collisionBox.canWalk ? 0x00ff00 : 0xff0000, alpha: 1 });
 
       // Draw collision points
       points.forEach(point => {
-         this.debugGraphics.beginFill(0xffff00);
-         this.debugGraphics.drawCircle(point.x, point.y, 2);
-         this.debugGraphics.endFill();
+         this.debugGraphics.circle(point.x, point.y, 2).fill(0xffff00);
       });
 
       // Draw sprite center point
       const centerX = points[0].x + (points[1].x - points[0].x) / 2;
       const centerY = points[0].y + (points[2].y - points[0].y) / 2;
-      this.debugGraphics.beginFill(0x00ffff);
-      this.debugGraphics.drawCircle(centerX, centerY, 2);
-      this.debugGraphics.endFill();
+      this.debugGraphics.circle(centerX, centerY, 2).fill(0x00ffff);
    }
 
    private isWithinBounds(position: Point): boolean {
@@ -420,7 +418,7 @@ export class Game {
       const gameContainer = document.getElementById("game-container");
 
       if (gameContainer) {
-         gameContainer.appendChild(this.app.view as HTMLCanvasElement);
+         gameContainer.appendChild(this.app.canvas);
          console.log("PixiJS canvas appended to game-container");
          this.app.renderer.resize(gameContainer.clientWidth, gameContainer.clientHeight);
          console.log("Renderer resized to container dimensions");

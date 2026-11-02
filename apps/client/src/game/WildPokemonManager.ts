@@ -54,15 +54,17 @@ export class WildPokemonManager {
       };
       if (species.tint) state.sprite.tint = species.tint;
 
-      const label = new PIXI.Text(species.name, {
-         fontFamily: "Arial",
-         fontSize: 12,
-         fill: 0xffffff,
-         stroke: 0x000000,
-         strokeThickness: 3,
-         align: "center"
-      } as any);
-      (label as any).anchor?.set?.(0.5, 1);
+      const label = new PIXI.Text({
+         text: species.name,
+         style: {
+            fontFamily: "Arial",
+            fontSize: 12,
+            fill: 0xffffff,
+            stroke: { color: 0x000000, width: 3 },
+            align: "center"
+         }
+      });
+      label.anchor.set(0.5, 1);
       label.x = state.sprite.x;
       label.y = state.sprite.y - state.sprite.height * 0.7;
 

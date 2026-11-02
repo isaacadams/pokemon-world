@@ -1,29 +1,33 @@
 $env.AWS_PROFILE = "spot-dev"
 
+# start auth, wss and client dev servers in tmux sessions
 def main [] {
-    try {
-        tmux kill-server
-    } catch {}
+    cd $env.FILE_PWD
+    for session in [auth wss client] {
+        try { tmux kill-session -t $session }
+    }
 
-    # start auth server
     bun install
     tmux new-session -d -s auth "cd apps/auth && bun server.js"
-    # start websocket server
     tmux new-session -d -s wss "cd apps/server && bun server.js"
-    # start client
     tmux new-session -d -s client "cd apps/client && bun run dev"
 }
 
+# cdk deploy the pokemon-world stack
 def "main deploy" [] {
-    cd infra; bunx cdk deploy
+    cd $env.FILE_PWD
+    bun run deploy
 }
 
+# build the client against the stack's URLs and sync it to S3
 def "main upload client" [] {
+    cd $env.FILE_PWD
     bun run release --only client
 }
 
 # wss + auth: upload to S3, install on EC2 via SSM Run Command
 def "main upload server" [] {
+    cd $env.FILE_PWD
     bun run release --only server
 }
 
@@ -38,29 +42,33 @@ def "main secret" [value: string] {
     aws ssm put-parameter --name /pokemon-world/dev/slack-client-secret --type SecureString --overwrite --value $value --region us-east-1
 }
 
+# point local production builds (apps/client/.env) at the deployed servers
 def "main env" [] {
     let outputs = aws cloudformation describe-stacks --stack-name pokemon-world --region us-east-1 --query "Stacks[0].Outputs" --output json
         | from json
-        | select OutputKey OutputValue 
-        | transpose -r 
+        | select OutputKey OutputValue
+        | transpose -r
         | into record
 
-    $"WEBSOCKET_URL=($outputs.WebSocketServerUrl)" | save --append .env
+    [
+        $"WEBSOCKET_URL=($outputs.WebSocketServerUrl)"
+        $"AUTH_SERVER_URL=($outputs.AuthServerUrl)"
+    ] | str join "\n" | save --force ($env.FILE_PWD | path join apps/client/.env)
     print $"game can be played @ ($outputs.GameSiteUrl)"
 }
 
+# stack resources as { logical_id: physical_id }
 def "main resources" [] {
-    let outputs = aws cloudformation list-stack-resources --stack-name pokemon-world --region us-east-1 --query "StackResourceSummaries" --output json
+    aws cloudformation list-stack-resources --stack-name pokemon-world --region us-east-1 --query "StackResourceSummaries" --output json
         | from json
-        | select LogicalResourceId PhysicalResourceId 
+        | select LogicalResourceId PhysicalResourceId
         | update LogicalResourceId { |r| $r.LogicalResourceId | str snake-case }
-        | transpose -r 
+        | transpose -r
         | into record
-
-    $outputs
 }
 
+# system libraries for Playwright browsers (DST + E2E tests)
 def "main linux dependencies" [] {
-    sudo apt update
-    sudo apt install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpng-dev pkg-config libuuid1 uuid-dev libfreetype6-dev librsvg2-dev libgdk-pixbuf2.0-dev
+    cd ($env.FILE_PWD | path join packages/dst)
+    bunx playwright install --with-deps chromium webkit
 }

@@ -2,7 +2,7 @@
    "compilerOptions": {
       "target": "ES6",
       "module": "ESNext",
-      "moduleResolution": "node",
+      "moduleResolution": "bundler",
       "lib": ["DOM", "es2017"],
       "strict": true,
       "esModuleInterop": true,
@@ -10,12 +10,12 @@
       "forceConsistentCasingInFileNames": true,
       "outDir": "./dist",
       "sourceMap": true,
+      "types": ["bun"],
       "typeRoots": ["./node_modules/@types", "src/types", "../../node_modules/@types"],
-      "baseUrl": ".",
       "paths": {
-         "@assets/*": ["src/assets/*"],
-         "@config/*": ["src/config/*"],
-         "@game/*": ["src/game/*"]
+         "@assets/*": ["./src/assets/*"],
+         "@config/*": ["./src/config/*"],
+         "@game/*": ["./src/game/*"]
       }
    },
    "include": ["src/**/*"],
