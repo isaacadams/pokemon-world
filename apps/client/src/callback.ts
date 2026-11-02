@@ -5,14 +5,19 @@ window.onload = async () => {
    try {
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get("code");
-      if (!!code) {
+      const state = urlParams.get("state");
+      const expectedState = sessionStorage.getItem("oauth_state");
+      sessionStorage.removeItem("oauth_state");
+      if (!!code && (!state || state !== expectedState)) {
+         localStorage.setItem("error", JSON.stringify({ message: "OAuth state mismatch" }));
+      } else if (!!code) {
          // Create an AbortController to timeout the fetch request
          const controller = new AbortController();
          const timeoutId = setTimeout(() => {
             controller.abort(); // Abort the request after 5 seconds
          }, 5000);
 
-         await fetch(new URL(`/auth/slack?code=${code}`, build.auth).toString(), {
+         await fetch(new URL(`/auth/slack?code=${encodeURIComponent(code)}`, build.auth).toString(), {
             method: "POST",
             signal: controller.signal // Attach the abort signal
          })

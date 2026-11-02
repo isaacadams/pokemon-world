@@ -59,4 +59,16 @@ describe("PokemonWorldStack", () => {
       expect(policy).toContain("parameter/pokemon-world/dev/slack-client-secret");
       expect(policy).toContain("/releases/*");
    });
+
+   test("instance requires IMDSv2 and encrypts its root volume", () => {
+      template.hasResourceProperties("AWS::EC2::Instance", {
+         MetadataOptions: { HttpTokens: "required" },
+         BlockDeviceMappings: [{ DeviceName: "/dev/xvda", Ebs: { Encrypted: true } }]
+      });
+   });
+
+   test("WebSocket server only accepts the game site's origin", () => {
+      const instance = template.findResources("AWS::EC2::Instance").WebSocketServerInstance;
+      expect(JSON.stringify(instance.Properties.UserData)).toContain("Environment=ALLOWED_ORIGINS=");
+   });
 });

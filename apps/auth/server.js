@@ -23,6 +23,10 @@ app.get("/", async (req, res) => {
 
 app.post("/auth/slack", async (req, res) => {
    const code = req.query.code;
+   if (typeof code !== "string" || code.length === 0) {
+      res.status(400).json({ ok: false, error: "missing_code" });
+      return;
+   }
    const clientId = "618968880548.8580073800295";
    const clientSecret = config.SLACK_CLIENT_SECRET;
    const redirectUri = config.CLIENT_URL + "/callback.html";
@@ -42,19 +46,30 @@ app.post("/auth/slack", async (req, res) => {
       );
 
       // https://api.slack.com/methods/oauth.v2.access#errors
+      // Never log or return full Slack responses: they hold access tokens and user PII.
       if (!response.data.ok) {
-         console.error(response.data);
-         res.status(400).send(response.data);
+         console.error("oauth.v2.access failed:", response.data.error);
+         res.status(400).json({ ok: false, error: "slack_auth_failed" });
          return;
       }
 
-      console.log(response.data);
       const token = response.data.authed_user.access_token;
-      const user = await getSlackUserIdentity(token);
-      res.json(user);
+      const identity = await getSlackUserIdentity(token);
+      if (!identity.ok) {
+         console.error("users.identity failed:", identity.error);
+         res.status(400).json({ ok: false, error: "slack_auth_failed" });
+         return;
+      }
+
+      res.json({
+         ok: true,
+         user: { id: identity.user.id, name: identity.user.name, email: identity.user.email },
+         team: { id: identity.team.id }
+      });
    } catch (error) {
-      console.error(error);
-      res.status(500).send("Authentication failed");
+      // Not the error object itself: axios errors include the request body (client secret).
+      console.error("Slack auth error:", error.message);
+      res.status(500).json({ ok: false, error: "auth_failed" });
    }
 });
 
@@ -66,17 +81,6 @@ async function getSlackUserIdentity(token) {
          Authorization: `Bearer ${token}`
       }
    });
-
-   console.log("identity response:", response.data);
-
-   if (response.data.ok) {
-      const slackUser = {
-         id: response.data.user.id, // e.g., "U1234567890"
-         name: response.data.user.name, // e.g., "johndoe" (username)
-         realName: response.data.user.real_name // e.g., "John Doe" (display name)
-      };
-      console.log(slackUser);
-   }
 
    return response.data;
 }

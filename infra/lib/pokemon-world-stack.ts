@@ -90,6 +90,7 @@ ConditionPathExists=/opt/pokemon-world/current/server.js
 [Service]
 DynamicUser=yes
 Environment=PORT=8080
+Environment=ALLOWED_ORIGINS=${clientUrl}
 ExecStart=/usr/bin/node /opt/pokemon-world/current/server.js
 Restart=always
 
@@ -186,6 +187,10 @@ export class PokemonWorldStack extends cdk.Stack {
          // t3 defaults to "unlimited" credits (surplus CPU is billed); standard throttles instead.
          creditSpecification: { cpuCredits: "standard" },
          imageId: AMI_ID,
+         // IMDSv2 only: session tokens block SSRF-style theft of the instance role's credentials.
+         metadataOptions: { httpTokens: "required", httpEndpoint: "enabled", httpPutResponseHopLimit: 1 },
+         // Encrypted root volume (AL2023's root device). Changing this replaces the instance.
+         blockDeviceMappings: [{ deviceName: "/dev/xvda", ebs: { encrypted: true, volumeType: "gp3" } }],
          iamInstanceProfile: instanceProfile.ref,
          securityGroupIds: [securityGroup.ref],
          subnetId,
