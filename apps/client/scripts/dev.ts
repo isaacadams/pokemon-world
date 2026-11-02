@@ -10,12 +10,14 @@ const { values } = parseArgs({
 
 await build("development");
 
-// Rebuild on source changes; refresh the browser to pick them up.
+// Rebuild on source changes (client and @repo/core); refresh the browser to pick them up.
 let pending: Timer | undefined;
-watch(path.resolve(import.meta.dir, "../src"), { recursive: true }, () => {
-   clearTimeout(pending);
-   pending = setTimeout(() => build("development").then(() => console.log("rebuilt"), console.error), 100);
-});
+for (const dir of ["../src", "../../../packages/core/src"]) {
+   watch(path.resolve(import.meta.dir, dir), { recursive: true }, () => {
+      clearTimeout(pending);
+      pending = setTimeout(() => build("development").then(() => console.log("rebuilt"), console.error), 100);
+   });
+}
 
 const rewrites: Record<string, string> = { "/": "/index.html", "/callback": "/callback.html" };
 

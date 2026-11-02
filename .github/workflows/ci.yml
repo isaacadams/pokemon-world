@@ -3,6 +3,8 @@ name: Continuous Integration
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   unit-tests:
@@ -20,8 +22,11 @@ jobs:
       - name: Run unit tests (bun test)
         run: bun run test
 
-      - name: Build client
-        run: bun run --filter @pokemon-world/game build
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build
+        run: bun run build
 
       - name: Synthesize infrastructure (CDK)
         run: bun run --filter @repo/infra synth
@@ -42,10 +47,18 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: packages/dst
-        run: bunx playwright install --with-deps
+        run: bunx playwright install --with-deps chromium webkit
 
       - name: Run DST headless Playwright tests
         run: bun run test:dst
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dst-test-results
+          path: packages/dst/test-results/
+          retention-days: 7
 
   e2e-playwright-tests:
     runs-on: ubuntu-latest
@@ -61,7 +74,18 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: test
-        run: bunx playwright install --with-deps
+        run: bunx playwright install --with-deps chromium
 
       - name: Run root E2E Playwright tests
         run: bun run test:e2e
+
+      # Includes actual/expected/diff images when a screenshot test fails.
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            test/test-results/
+            test/playwright-report/
+          retention-days: 7

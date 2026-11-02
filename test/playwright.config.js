@@ -16,6 +16,10 @@ export default defineConfig({
       timeout: 120000,
       reuseExistingServer: !process.env.CI
    },
+   expect: {
+      // Small allowance for font anti-aliasing differences between machines
+      toHaveScreenshot: { maxDiffPixelRatio: 0.01 }
+   },
    retries: 0,
-   reporter: [["list"], ["html", { outputFolder: "playwright-report" }]]
+   reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]]
 });

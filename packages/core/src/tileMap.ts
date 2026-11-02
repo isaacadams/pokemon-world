@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import { overworld, SpriteTile, TileSetFactory } from "./overworld";
+import { TileAtlas } from "./tileAtlas";
 
 interface TmxLayer {
    data: number[];
@@ -10,7 +11,7 @@ interface TmxLayer {
 export class TileMap {
    private container: PIXI.Container;
    private tileSize: number;
-   private tilesetTexture: PIXI.BaseTexture;
+   private atlas: TileAtlas;
    private tiles: PIXI.Sprite[][][] = [];
 
    private xTiles: SpriteTile[][][];
@@ -26,18 +27,12 @@ export class TileMap {
    constructor(tilesImagePath: string, tilesTmxPath: string, mapTmxPath: string) {
       //console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
       this.tilesetConfig = new TileSet(tilesTmxPath);
-      this.tilesetTexture = PIXI.BaseTexture.from(tilesImagePath);
-      // Ensure crisp sampling to avoid seams between tiles
-      this.tilesetTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
-      this.tilesetTexture.mipmap = PIXI.MIPMAP_MODES.OFF;
-      this.tilesetTexture.wrapMode = PIXI.WRAP_MODES.CLAMP;
-
-      const factory = new TileSetFactory(this.tilesetTexture, 32);
+      this.atlas = new TileAtlas(tilesImagePath, 32);
+      const factory = new TileSetFactory(this.atlas, 32);
       overworld(factory);
 
       this.container = new PIXI.Container();
       this.tileSize = 32;
-      console.log("is tile set png valid? ", this.tilesetTexture.valid);
 
       // debugging when hovering over tiles (gated by debugMode)
       this.hoverDebugGraphics = new PIXI.Graphics();
@@ -133,6 +128,14 @@ export class TileMap {
 
    public getContainer(): PIXI.Container {
       return this.container;
+   }
+
+   public getTilesetTextures(): PIXI.BaseTexture[] {
+      return this.atlas.baseTextures();
+   }
+
+   public isTilesetLoaded(): boolean {
+      return this.atlas.isLoaded;
    }
 
    public getTiles(): PIXI.Sprite[][][] {

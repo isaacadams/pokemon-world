@@ -64,9 +64,3 @@ def "main linux dependencies" [] {
     sudo apt update
     sudo apt install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpng-dev pkg-config libuuid1 uuid-dev libfreetype6-dev librsvg2-dev libgdk-pixbuf2.0-dev
 }
-
-def "main dst" [] {
-    docker build -t pokemon-world -f dockerfile.dst .
-    #docker run -v $(pwd):/app pokemon-world
-    docker run pokemon-world
-}
