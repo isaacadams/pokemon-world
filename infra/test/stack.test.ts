@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as cdk from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { AMI_ID, PokemonWorldStack } from "../lib/pokemon-world-stack";
+import { AMI_ID, PokemonWorldStack, ROOT_VOLUME_GIB } from "../lib/pokemon-world-stack";
 
 const app = new cdk.App();
 const stack = new PokemonWorldStack(app, "Test", {
@@ -63,7 +63,8 @@ describe("PokemonWorldStack", () => {
    test("instance requires IMDSv2 and encrypts its root volume", () => {
       template.hasResourceProperties("AWS::EC2::Instance", {
          MetadataOptions: { HttpTokens: "required" },
-         BlockDeviceMappings: [{ DeviceName: "/dev/xvda", Ebs: { Encrypted: true } }]
+         // CloudFormation rejects an Ebs mapping with neither VolumeSize nor SnapshotId.
+         BlockDeviceMappings: [{ DeviceName: "/dev/xvda", Ebs: { Encrypted: true, VolumeSize: ROOT_VOLUME_GIB } }]
       });
    });
 
