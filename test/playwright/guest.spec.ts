@@ -18,14 +18,14 @@ test.describe("Guest Mode Flow", () => {
       await page.fill("input[placeholder='Enter name']", "Ash");
       await page.click("button:has-text('Start Game')");
 
+      // Submitting may navigate to the game; wait for the prompt to go away before reading storage.
+      await expect(page.locator("input[placeholder='Enter name']")).toHaveCount(0);
+
       // Verify localStorage has the player data (correct key: "data")
       const storedData = await page.evaluate(() => localStorage.getItem("data"));
       expect(storedData).toBeTruthy();
       const parsedData = JSON.parse(storedData!);
       expect(parsedData.user.name).toBe("Ash");
       expect(parsedData.user.id).toMatch(/^GUEST_/);
-
-      const inputAfterSubmit = await page.$("input[placeholder='Enter name']");
-      expect(inputAfterSubmit).toBeNull();
    });
 });

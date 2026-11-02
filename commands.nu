@@ -6,43 +6,41 @@ def main [] {
     } catch {}
 
     # start auth server
-    pnpm i
-    tmux new-session -d -s auth "cd apps/auth && node server.js"
+    bun install
+    tmux new-session -d -s auth "cd apps/auth && bun server.js"
     # start websocket server
-    tmux new-session -d -s wss "cd apps/server && node server.js"
+    tmux new-session -d -s wss "cd apps/server && bun server.js"
     # start client
-    tmux new-session -d -s client "cd apps/client && npm run dev"
+    tmux new-session -d -s client "cd apps/client && bun run dev"
 }
 
 def "main deploy" [] {
-    sam deploy
+    cd infra; bunx cdk deploy
 }
 
 def "main upload client" [] {
-    pnpm -F @pokemon-world/game build
-    aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/
+    bun run release --only client
 }
 
-def "main upload server" [name: string] {
-    match $name {
-        # authentication for slack, runs on port 3000
-        "auth" => {
-            #scp -r auth pokemon-world:/home/ec2-user/auth
-            rsync -avz --exclude 'node_modules' apps/auth/ pokemon-world:/home/ec2-user/auth
-            ssh pokemon-world "cd /home/ec2-user/auth && npm i && mv .env.production .env && tmux kill-session -t auth && tmux new-session -d -s auth 'node server.js'"
-        }
-        # websocket, port: 8000
-        "wss" => {
-            #aws s3 cp apps/server/server.js s3://my-game-server-artifacts-dev-389616631340/
-            rsync -avz --exclude 'node_modules' apps/server/ pokemon-world:/home/ec2-user/wss
-            ssh pokemon-world "cd /home/ec2-user/wss && npm i && tmux kill-session -t wss && tmux new-session -d -s wss 'node server.js'"
-        }
-    }
+# wss + auth: upload to S3, install on EC2 via SSM Run Command
+def "main upload server" [] {
+    bun run release --only server
+}
+
+# shell on the EC2 instance via SSM Session Manager (needs session-manager-plugin)
+def "main shell" [] {
+    let id = aws cloudformation describe-stacks --stack-name pokemon-world --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='EC2InstanceId'].OutputValue" --output text
+    aws ssm start-session --target $id --region us-east-1
+}
+
+# store the auth server's Slack secret; picked up on the next release
+def "main secret" [value: string] {
+    aws ssm put-parameter --name /pokemon-world/dev/slack-client-secret --type SecureString --overwrite --value $value --region us-east-1
 }
 
 def "main env" [] {
-    let outputs = sam list stack-outputs --stack-name pokemon-world --output json --region us-east-1 
-        | from json 
+    let outputs = aws cloudformation describe-stacks --stack-name pokemon-world --region us-east-1 --query "Stacks[0].Outputs" --output json
+        | from json
         | select OutputKey OutputValue 
         | transpose -r 
         | into record
@@ -52,8 +50,8 @@ def "main env" [] {
 }
 
 def "main resources" [] {
-    let outputs = sam list resources --stack-name pokemon-world --output json --region us-east-1 
-        | from json 
+    let outputs = aws cloudformation list-stack-resources --stack-name pokemon-world --region us-east-1 --query "StackResourceSummaries" --output json
+        | from json
         | select LogicalResourceId PhysicalResourceId 
         | update LogicalResourceId { |r| $r.LogicalResourceId | str snake-case }
         | transpose -r 
@@ -65,10 +63,4 @@ def "main resources" [] {
 def "main linux dependencies" [] {
     sudo apt update
     sudo apt install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev libpng-dev pkg-config libuuid1 uuid-dev libfreetype6-dev librsvg2-dev libgdk-pixbuf2.0-dev
-}
-
-def "main dst" [] {
-    docker build -t pokemon-world -f dockerfile.dst .
-    #docker run -v $(pwd):/app pokemon-world
-    docker run pokemon-world
 }

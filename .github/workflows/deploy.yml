@@ -1,0 +1,54 @@
+name: Deploy Pokemon World
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment name (e.g., dev, production)"
+        required: true
+        default: "dev"
+      deploy_infra:
+        description: "Run CDK deploy to update infra (idempotent)"
+        required: true
+        default: "true"
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT_NAME: ${{ inputs.environment || 'dev' }}
+      # The stack is pinned to us-east-1 (region-specific AMI, VPC and subnet).
+      AWS_REGION: us-east-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Optionally deploy/update infrastructure (CDK)
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy_infra == 'true') || (github.event_name == 'push') }}
+        working-directory: infra
+        run: |
+          # Idempotent: only updates if there are changes.
+          bunx cdk deploy \
+            --require-approval never \
+            -c environmentName=${{ env.ENVIRONMENT_NAME }} \
+            -c vpcId=${{ secrets.VPC_ID }} \
+            -c subnetId=${{ secrets.SUBNET_ID }}
+
+      # Uploads server/auth bundles to S3, installs them via SSM Run Command, then syncs the client.
+      - name: Release servers and client
+        run: bun run release

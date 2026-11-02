@@ -22,6 +22,7 @@ export class PC {
       this.sprite.tint = 0x0000ff;
       this.sprite.x = x;
       this.sprite.y = y;
+      this.sprite.visible = this.debugMode;
 
       // Create interaction zone
       this.interactionZone = new PIXI.Graphics();
@@ -84,6 +85,7 @@ export class PC {
    public setDebugMode(enabled: boolean): void {
       this.debugMode = enabled;
       this.debugText.visible = enabled;
+      this.sprite.visible = enabled;
       if (!enabled) {
          this.interactionZone.alpha = 0;
       }

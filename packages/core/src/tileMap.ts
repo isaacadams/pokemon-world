@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import { overworld, SpriteTile, TileSetFactory } from "./overworld";
+import { TileAtlas } from "./tileAtlas";
 
 interface TmxLayer {
    data: number[];
@@ -10,7 +11,7 @@ interface TmxLayer {
 export class TileMap {
    private container: PIXI.Container;
    private tileSize: number;
-   private tilesetTexture: PIXI.BaseTexture;
+   private atlas: TileAtlas;
    private tiles: PIXI.Sprite[][][] = [];
 
    private xTiles: SpriteTile[][][];
@@ -20,30 +21,32 @@ export class TileMap {
    private verboseMode: boolean = false;
    private tilesetConfig: TileSet;
 
+   private hoverDebugGraphics: PIXI.Graphics | undefined;
+   private hoverDebugText: PIXI.Text | undefined;
+
    constructor(tilesImagePath: string, tilesTmxPath: string, mapTmxPath: string) {
       //console.log([tilesImagePath, tilesTmxPath, mapTmxPath]);
       this.tilesetConfig = new TileSet(tilesTmxPath);
-      this.tilesetTexture = PIXI.BaseTexture.from(tilesImagePath);
-
-      const factory = new TileSetFactory(this.tilesetTexture, 32);
+      this.atlas = new TileAtlas(tilesImagePath, 32);
+      const factory = new TileSetFactory(this.atlas, 32);
       overworld(factory);
 
       this.container = new PIXI.Container();
       this.tileSize = 32;
-      console.log("is tile set png valid? ", this.tilesetTexture.valid);
 
-      // debugging when hovering over tiles
-      const g = new PIXI.Graphics();
-      const text = new PIXI.Text("Debug Mode Off", {
+      // debugging when hovering over tiles (gated by debugMode)
+      this.hoverDebugGraphics = new PIXI.Graphics();
+      this.hoverDebugGraphics.visible = false;
+      this.hoverDebugText = new PIXI.Text("Debug Mode Off", {
          fontFamily: "Arial",
          fontSize: 16,
          fill: 0x00ffff,
          stroke: 0x000000,
          strokeThickness: 2
       });
-      text.x = 10;
-      text.y = 675;
-      text.visible = false;
+      this.hoverDebugText.x = 10;
+      this.hoverDebugText.y = 675;
+      this.hoverDebugText.visible = false;
 
       //if (!this.tileset.valid) {
       //   console.error("failed");
@@ -95,17 +98,22 @@ export class TileMap {
 
                spriteTile.sprite.eventMode = "static";
                spriteTile.sprite.on("pointerover", _ => {
-                  g.clear();
-                  g.lineStyle(2, 0xff0000, 0.8);
-                  g.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+                  if (!this.debugMode || !this.hoverDebugGraphics || !this.hoverDebugText) return;
+                  this.hoverDebugGraphics.clear();
+                  this.hoverDebugGraphics.lineStyle(2, 0xff0000, 0.8);
+                  this.hoverDebugGraphics.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
 
-                  text.visible = true;
-                  text.text = `x:${x}, y:${y}\ntile id: ${tileId - 1}`;
+                  this.hoverDebugText.visible = true;
+                  this.hoverDebugText.text = `x:${x}, y:${y}\ntile id: ${tileId - 1}`;
                });
                spriteTile.sprite.on("pointerleave", _ => {
-                  g.clear();
-                  text.visible = true;
-                  text.text = "";
+                  if (!this.hoverDebugGraphics || !this.hoverDebugText) return;
+                  this.hoverDebugGraphics.clear();
+                  if (!this.debugMode) {
+                     this.hoverDebugText.visible = false;
+                  } else {
+                     this.hoverDebugText.text = "";
+                  }
                });
 
                this.tiles[i][y][x] = spriteTile.sprite;
@@ -115,11 +123,19 @@ export class TileMap {
          }
       }
 
-      this.container.addChild(g, text);
+      this.container.addChild(this.hoverDebugGraphics, this.hoverDebugText);
    }
 
    public getContainer(): PIXI.Container {
       return this.container;
+   }
+
+   public getTilesetTextures(): PIXI.BaseTexture[] {
+      return this.atlas.baseTextures();
+   }
+
+   public isTilesetLoaded(): boolean {
+      return this.atlas.isLoaded;
    }
 
    public getTiles(): PIXI.Sprite[][][] {
@@ -146,6 +162,12 @@ export class TileMap {
       this.debugMode = enabled;
       if (this.verboseMode) {
          console.log(`TileMap debug mode ${enabled ? "enabled" : "disabled"}`);
+      }
+      if (this.hoverDebugGraphics && this.hoverDebugText) {
+         this.hoverDebugGraphics.visible = enabled;
+         this.hoverDebugGraphics.clear();
+         this.hoverDebugText.visible = enabled;
+         this.hoverDebugText.text = enabled ? "" : "Debug Mode Off";
       }
    }
 

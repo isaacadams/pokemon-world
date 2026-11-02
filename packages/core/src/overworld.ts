@@ -1,23 +1,17 @@
 import * as PIXI from "pixi.js";
+import { TileAtlas } from "./tileAtlas";
 
 export interface TileConfig {
    impassable: boolean;
 }
 
 export class Tile {
-   texture: PIXI.Texture;
-
    constructor(
       public readonly id: number,
       public readonly size: number,
-      private readonly base: PIXI.BaseTexture,
+      public readonly texture: PIXI.Texture,
       public readonly config: TileConfig
-   ) {
-      this.texture = new PIXI.Texture(
-         base,
-         new PIXI.Rectangle((id % 8) * size, Math.floor(id / 8) * size, size, size)
-      );
-   }
+   ) {}
 
    sprite(layer: number, x: number, y: number) {
       return new SpriteTile({ layer, x, y }, new PIXI.Sprite(this.texture), this);
@@ -39,17 +33,17 @@ export class TileSetFactory {
    tiles: Map<number, Tile> = new Map();
 
    constructor(
-      private readonly base: PIXI.BaseTexture,
+      private readonly atlas: TileAtlas,
       private readonly size: number
    ) {}
 
    create(id: number, config: TileConfig) {
-      return new Tile(id, this.size, this.base, config);
+      return new Tile(id, this.size, this.atlas.texture(id), config);
    }
 
    add(config: TileConfig, ...ids: number[]) {
       ids.forEach(id => {
-         this.tiles.set(id, new Tile(id, this.size, this.base, config));
+         this.tiles.set(id, this.create(id, config));
       });
    }
 }

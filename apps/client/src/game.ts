@@ -25,6 +25,7 @@ function initializeGame(opts: { scenario?: string; name?: string } = {}) {
 
    cache.load().then(c => {
       game.initializePlayer(c.player);
+      game.initializeWildMix?.(c.wilds as any);
       game.setupWebSocket(c.player);
       game.start();
       game.render();

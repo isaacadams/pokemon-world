@@ -9,20 +9,21 @@ test.describe("Headless scenario assertions (devmode)", () => {
       // Give time for scheduled inputs to complete
       await page.waitForTimeout(1800);
 
-      // Read final position from the Game API
-      const pos = await page.evaluate(() => {
+      // Capture start and end positions from the Game API
+      const { start, end } = await page.evaluate(() => {
          const g: any = (window as any).game;
-         return { x: g.getPlayerPosition().x, y: g.getPlayerPosition().y };
+         const start = g.getPlayerPosition();
+         return { start, end: g.getPlayerPosition() };
       });
 
       // Assert: after a square, should be close to starting tile
       // We don't expect exact equality due to per-frame movement and collision,
       // so allow a small threshold around the central tile
-      const startX = 480;
-      const startY = 320;
+      const startX = start.x;
+      const startY = start.y;
       const threshold = 96; // allow ~3 tiles tolerance due to continuous movement
-      expect(Math.abs(pos.x - startX)).toBeLessThanOrEqual(threshold);
-      expect(Math.abs(pos.y - startY)).toBeLessThanOrEqual(threshold);
+      expect(Math.abs(end.x - startX)).toBeLessThanOrEqual(threshold);
+      expect(Math.abs(end.y - startY)).toBeLessThanOrEqual(threshold);
    });
 });
 

@@ -3,5 +3,9 @@
    "version": "1.0.0",
    "type": "module",
    "main": "src/index.ts",
+   "dependencies": {
+      "pixi.js": "^7.4.0"
+   },
+   "private": true,
    "scripts": {}
 }

@@ -18,29 +18,30 @@ What it includes
 Quick start
 -----------
 
-Install and serve:
+Install:
 
 ```bash
-pnpm i
-pnpm -F @repo/dst serve
+bun install
+bunx playwright install --with-deps
 ```
 
-Open the visualization:
+Run a scenario in a browser (starts the client dev server):
 
-- Normal: `http://localhost:1234/`
-- Slow visualization mode: `http://localhost:1234/?slow=1`
-  - Runs a short, visible, deterministic sequence using `runRealtime`.
+```bash
+bun packages/dst/scripts/run-scenario.js walk_square --client --devmode --slow
+bun packages/dst/scripts/run-scenario.js --list
+```
 
 Run tests (headless):
 
 ```bash
-pnpm -F @repo/dst test
+bun run test:dst
 ```
 
 Run tests (headed):
 
 ```bash
-pnpm -F @repo/dst test -- --headed
+cd packages/dst && bunx playwright test --headed
 ```
 
 Key APIs
@@ -87,7 +88,7 @@ File map
 - `src/game.ts`: Visualization entry; wires map + simulator; exposes globals.
 - `src/index.html`: Canvas host for Parcel.
 - `src/v1.spec.ts`: Playwright scenario exercising deterministic inputs.
-- `playwright.config.js`: Runs tests against Parcel at `http://localhost:1234`.
+- `playwright.config.js`: Runs tests against the client dev server at `http://localhost:9010`.
 
 Notes
 -----

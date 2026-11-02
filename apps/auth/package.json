@@ -3,7 +3,8 @@
    "version": "1.0.0",
    "main": "index.js",
    "scripts": {
-      "test": "echo \"No tests in auth; skipping.\" && exit 0"
+      "build": "bun build server.js --target node --outfile dist/auth.js",
+      "start": "bun server.js"
    },
    "keywords": [],
    "author": "",

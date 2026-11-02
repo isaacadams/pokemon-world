@@ -1,14 +1,17 @@
-import { test, expect } from "@playwright/test";
-import { getPlayerPosition } from "./utils";
+import { test, expect, Page } from "@playwright/test";
+import { getPlayerPosition, startGame } from "./utils";
+
+// Holds a key until the player has moved as expected, so the test doesn't depend on frame timing.
+async function holdUntil(page: Page, key: string, moved: (position: number[]) => boolean) {
+   await page.keyboard.down(key);
+   await expect.poll(async () => moved(await getPlayerPosition(page))).toBe(true);
+   await page.keyboard.up(key);
+   return getPlayerPosition(page);
+}
 
 test.describe("Player Movement", () => {
    test.beforeEach(async ({ page }) => {
-      await page.goto("/game.html");
-      await page.evaluate(() => localStorage.clear());
-      await page.fill("input[placeholder='Enter name']", "Ash");
-      await page.click("button:has-text('Start Game')");
-      await page.waitForTimeout(500); // Initial render delay
-      await page.waitForFunction(() => (window as any).game !== undefined);
+      await startGame(page, "Ash");
       // Ensure the page is active and focused
       await page.bringToFront();
    });
@@ -18,26 +21,11 @@ test.describe("Player Movement", () => {
 
       expect(initialPosition).toEqual([480, 320]); // Default position (WORLD_BOUNDS / 2)
 
-      await page.bringToFront();
-      // Simulate moving right (D key) with a single press
-      await page.keyboard.down("d");
-      await page.waitForTimeout(25); // Wait for one frame
-      await page.keyboard.up("d");
-      //await page.pause();
-
-      const positionAfterD = await getPlayerPosition(page);
-      //await page.bringToFront();
-
+      const positionAfterD = await holdUntil(page, "d", ([x]) => x > 480);
       expect(positionAfterD[0]).toBeGreaterThan(480); // should be higher than original
       expect(positionAfterD[1]).toEqual(320); // should be unchanged
 
-      // Simulate moving down (S key) with a single press
-      await page.keyboard.down("s");
-      await page.waitForTimeout(25); // Wait for one frame
-      await page.keyboard.up("s");
-
-      const positionAfterS = await getPlayerPosition(page);
-
+      const positionAfterS = await holdUntil(page, "s", ([, y]) => y > 320);
       expect(positionAfterS[0]).toBeGreaterThan(480); // should be higher than original
       expect(positionAfterS[1]).toBeGreaterThan(320); // should be higher than original
    });

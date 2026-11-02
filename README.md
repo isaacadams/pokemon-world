@@ -3,38 +3,47 @@
 Terse quickstart for getting the app running locally.
 
 ### Prerequisites
-- Node.js 18+ (LTS recommended)
-- pnpm 10+ (`corepack enable` or `npm i -g pnpm`)
+- Bun 1.2+ (`curl -fsSL https://bun.sh/install | bash`)
 
 ### Install
 ```bash
-pnpm install
+bun install
 ```
 
 ### Run (development)
 - Client (PixiJS game):
 ```bash
-pnpm --filter @pokemon-world/game dev
+bun run dev
 ```
-  - Opens dev server via webpack-dev-server.
+  - Bundles with `Bun.build` and serves on http://localhost:9000 (rebuilds on change; refresh to see it).
 
 - Server (WebSocket):
 ```bash
-node apps/server/server.js
+bun apps/server/server.js
 ```
 
 ### Build
 ```bash
-pnpm build
+bun run build
 ```
-Uses Turborepo to build all packages/apps.
+Runs each workspace's `build` script (`bun run --filter '*' build`).
+
+### Test
+```bash
+bun run test        # unit tests (bun test)
+bun run test:dst    # DST Playwright tests
+bun run test:e2e    # E2E Playwright tests
+```
+First run: `bunx playwright install --with-deps`.
 
 ### Repo structure
-- `apps/client`: browser client (webpack, PixiJS)
-- `apps/server`: Node WebSocket server (`ws`)
+- `apps/client`: browser client (Bun bundler, PixiJS)
+- `apps/server`: WebSocket server (`ws`)
 - `apps/auth`: Express auth prototype
 - `packages/core`: shared game/core logic
- - `packages/dst`: deterministic simulation testing (DST)
+- `packages/dst`: deterministic simulation testing (DST)
+- `infra`: AWS CDK app (S3 website + EC2 WebSocket server)
+- `test`: E2E Playwright tests and unit tests
 
 ### Docs
 - DST: packages/dst/README.md
@@ -42,13 +51,32 @@ Uses Turborepo to build all packages/apps.
 - Server: apps/server/README.md
 - Auth: apps/auth/README.md
 - Core: packages/core/README.md
+- Infra: infra/README.md
 
 ### Common issues
-- If deps look odd: `pnpm run fresh-install`
-- Port conflicts: stop prior webpack/dev servers
+- If deps look odd: `bun run fresh-install`
+- Port conflicts: stop prior dev servers
 
 ### Deployed demo
 site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
+
+### Deploy
+
+1) Infrastructure (S3 website + EC2 WebSocket server) with CDK
+```bash
+AWS_PROFILE=spot-dev bun run deploy
+```
+
+2) Release servers + client (no SSH)
+```bash
+AWS_PROFILE=spot-dev bun run release                 # everything
+AWS_PROFILE=spot-dev bun run release --only server   # wss + auth
+AWS_PROFILE=spot-dev bun run release --only client   # S3 website
+```
+
+- See `infra/README.md` for how releases work and how to roll back.
+- CI does both steps on push to `main` (`.github/workflows/deploy.yml`).
+- You are hitting the S3 Website endpoint directly, so no CloudFront invalidation is needed.
 
 ---
 

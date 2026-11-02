@@ -60,7 +60,7 @@ async function run() {
   const args = process.argv.slice(2);
   const scenarioName = args.find(a => !a.startsWith("-"));
   if (!scenarioName) {
-    console.error("Usage: pnpm -F @repo/dst scenario -- <scenario-name> [--slow] | pnpm -F @repo/dst scenarios");
+    console.error("Usage: bun packages/dst/scripts/run-scenario.js <scenario-name> [--client] [--slow] | --list");
     process.exit(1);
   }
   const slow = args.includes("--slow");
@@ -78,9 +78,9 @@ async function run() {
   const clientUrl = `http://localhost:${desiredPort}`;
   const targetUrl = useClient ? clientUrl : BASE_URL;
   const argsToSpawn = useClient
-    ? ["--filter", "@pokemon-world/game", "dev", "--port", desiredPort]
-    : ["serve"];
-  server = spawn(process.platform === "win32" ? "pnpm.cmd" : "pnpm", argsToSpawn, {
+    ? ["apps/client/scripts/dev.ts", "--port", desiredPort]
+    : ["run", "serve"];
+  server = spawn(process.platform === "win32" ? "bun.exe" : "bun", argsToSpawn, {
     cwd: useClient ? __dirname + "/../../.." : __dirname + "/..",
     stdio: "inherit"
   });

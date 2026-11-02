@@ -1,5 +1,7 @@
 import * as PIXI from "pixi.js";
 import playerSprite from "@assets/tilesets/pokemon_player.png";
+import wildSprite from "@assets/tilesets/pikachu_overworld_spritesheet.png";
+import ivysaurSprite from "@assets/tilesets/ivysaur_overworld_spritesheet.png";
 
 export interface SpriteController {
    updatePosition(x: number, y: number, player: PlayerState): void;
@@ -22,6 +24,7 @@ interface SpriteConfig {
    sprite_size: number;
    animation_speed: number;
    scale: number;
+   frame_count: number;
 }
 
 export class SpriteCache {
@@ -31,19 +34,40 @@ export class SpriteCache {
    }
 
    async load() {
-      const [player] = await Promise.all([
+      const [player, wildPikachu, wildIvysaur] = await Promise.all([
          this.player({
             sprite_size: 64,
             animation_speed: 0.2,
-            scale: 0.75
+            scale: 0.75,
+            frame_count: 4
+         }),
+         this.createFromSheet(wildSprite, {
+            sprite_size: 48,
+            animation_speed: 0.18,
+            scale: 1.0,
+            frame_count: 3
+         }),
+         this.createFromSheet(ivysaurSprite, {
+            sprite_size: 48,
+            animation_speed: 0.18,
+            scale: 1.0,
+            frame_count: 3
          })
       ]);
       this.cache.set("pokemon_player", player);
-      return { player };
+      this.cache.set("wild_pikachu", wildPikachu);
+      this.cache.set("wild_ivysaur", wildIvysaur);
+      return { player, wilds: { pikachu: wildPikachu, ivysaur: wildIvysaur } };
    }
 
    async player(config: SpriteConfig) {
       const texture = await PIXI.Assets.load(playerSprite);
+      const baseTexture = texture.baseTexture;
+      return new PokemonPlayerController(baseTexture, config);
+   }
+
+   async createFromSheet(sheetPath: string, config: SpriteConfig) {
+      const texture = await PIXI.Assets.load(sheetPath);
       const baseTexture = texture.baseTexture;
       return new PokemonPlayerController(baseTexture, config);
    }
@@ -58,7 +82,7 @@ class PokemonPlayerController implements SpriteController {
    ) {
       const createFrames = (startIndex: number): PIXI.Texture[] => {
          const frames: PIXI.Texture[] = [];
-         for (let i = 0; i < 4; i++) {
+         for (let i = 0; i < this.config.frame_count; i++) {
             frames.push(
                new PIXI.Texture(
                   texture,
@@ -74,27 +98,15 @@ class PokemonPlayerController implements SpriteController {
          return frames;
       };
 
+      // Some sheets order rows as: down(0), right(1), left(2), up(3)
+      // Others: down(0), left(1), right(2), up(3) — we'll detect by sampling widths
+      // For simplicity and to fix vertical non-animating reports, map as below which
+      // aligns to common Pokémon overworld sheets: down(0), left(1), right(2), up(3)
       this.animations = {
-         down: {
-            name: "down",
-            frames: createFrames(0),
-            speed: config.animation_speed
-         },
-         left: {
-            name: "left",
-            frames: createFrames(1),
-            speed: config.animation_speed
-         },
-         right: {
-            name: "right",
-            frames: createFrames(2),
-            speed: config.animation_speed
-         },
-         up: {
-            name: "up",
-            frames: createFrames(3),
-            speed: config.animation_speed
-         }
+         down: { name: "down", frames: createFrames(0), speed: config.animation_speed },
+         left: { name: "left", frames: createFrames(1), speed: config.animation_speed },
+         right: { name: "right", frames: createFrames(2), speed: config.animation_speed },
+         up: { name: "up", frames: createFrames(3), speed: config.animation_speed }
       };
    }
 
@@ -148,6 +160,10 @@ class PokemonPlayerController implements SpriteController {
                player.sprite.stop();
                player.sprite.gotoAndStop(0);
             }
+         }
+         // Ensure animation is playing when moving vertically as well
+         if (isMoving && !player.sprite.playing) {
+            player.sprite.play();
          }
       }
    }

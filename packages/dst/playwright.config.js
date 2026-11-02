@@ -38,7 +38,7 @@ module.exports = defineConfig({
 
    // WebServer (optional, if you want to serve the HTML file via a local server)
    webServer: {
-      command: "pnpm --filter @pokemon-world/game dev --port 9010",
+      command: "bun ../../apps/client/scripts/dev.ts --port 9010",
       port: 9010,
       reuseExistingServer: true
    }

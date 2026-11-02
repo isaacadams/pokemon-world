@@ -6,5 +6,5 @@
 !.env.example
 test-results/
 playwright-report/
-.turbo
+cdk.out/
 .parcel-cache

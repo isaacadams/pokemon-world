@@ -32,8 +32,15 @@ class IntroScreen {
          alias: "pikachu",
          src: "https://raw.githubusercontent.com/msikma/pokesprite/master/pokemon-gen7x/regular/pikachu.png"
       });
-      const resources = await PIXI.Assets.load(["charizard", "pikachu"]);
-      this.setupAnimation(resources);
+      try {
+         const resources = await PIXI.Assets.load(["charizard", "pikachu"]);
+         this.setupAnimation(resources);
+      } catch (e) {
+         // The intro sprites are remote; never leave the menu hidden if they fail to load.
+         console.error("Intro sprites failed to load; showing menu", e);
+         this.menuShown = true;
+         this.showMenu();
+      }
    }
 
    private setupAnimation(resources: Record<string, PIXI.Texture>): void {
