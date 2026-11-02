@@ -67,6 +67,16 @@ site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
 AWS_PROFILE=spot-dev bun run deploy
 ```
 
+CI release flow (pushes to `main` do not deploy):
+
+1. Push a semver tag: `git tag v1.2.3 && git push origin v1.2.3` (pre-release suffixes like `-rc.1` work).
+2. `prerelease.yml` tests, builds, and publishes a GitHub pre-release with generated notes.
+3. Promote it: edit the release, uncheck "pre-release", check "Set as the latest release".
+4. `deploy.yml` deploys it (only if it is Latest).
+5. Redeploy or roll back: run `deploy.yml` manually with a tag (`gh workflow run deploy.yml -f tag=v1.2.2`).
+
+Manual deploy:
+
 2) Release servers + client (no SSH)
 ```bash
 AWS_PROFILE=spot-dev bun run release                 # everything
@@ -75,7 +85,6 @@ AWS_PROFILE=spot-dev bun run release --only client   # S3 website
 ```
 
 - See `infra/README.md` for how releases work and how to roll back.
-- CI does both steps on push to `main` (`.github/workflows/deploy.yml`).
 - You are hitting the S3 Website endpoint directly, so no CloudFront invalidation is needed.
 
 ---

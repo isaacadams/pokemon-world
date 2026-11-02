@@ -1,8 +1,16 @@
 name: Deploy Pokemon World
 
+# Deploys only when a release becomes the repo's Latest release (e.g. a
+# pre-release from prerelease.yml is promoted with "Set as the latest release").
+# Run it manually with a tag to redeploy or roll back.
 on:
+  release:
+    types: [released]
   workflow_dispatch:
     inputs:
+      tag:
+        description: "Release tag to deploy (e.g., v1.2.3)"
+        required: true
       environment:
         description: "Environment name (e.g., dev, production)"
         required: true
@@ -11,46 +19,73 @@ on:
         description: "Run CDK deploy to update infra (idempotent)"
         required: true
         default: "true"
-  push:
-    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
       ENVIRONMENT_NAME: ${{ inputs.environment || 'dev' }}
+      DEPLOY_INFRA: ${{ inputs.deploy_infra || 'true' }}
       # The stack is pinned to us-east-1 (region-specific AMI, VPC and subnet).
       AWS_REGION: us-east-1
+      GH_TOKEN: ${{ github.token }}
     steps:
+      - name: Check release is Latest
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          latest=$(gh api "repos/${{ github.repository }}/releases/latest" --jq .tag_name)
+          if [ "$latest" != "$TAG" ]; then
+            echo "::notice::$TAG is not the Latest release ($latest); skipping deploy"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Checkout
+        if: ${{ env.SKIP != 'true' }}
         uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.TAG }}
 
       - name: Setup Bun
+        if: ${{ env.SKIP != 'true' }}
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
 
       - name: Install dependencies
+        if: ${{ env.SKIP != 'true' }}
         run: bun install --frozen-lockfile
 
       - name: Configure AWS credentials
+        if: ${{ env.SKIP != 'true' }}
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Optionally deploy/update infrastructure (CDK)
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy_infra == 'true') || (github.event_name == 'push') }}
+      - name: Deploy/update infrastructure (CDK)
+        if: ${{ env.SKIP != 'true' && env.DEPLOY_INFRA == 'true' }}
         working-directory: infra
+        env:
+          VPC_ID: ${{ secrets.VPC_ID }}
+          SUBNET_ID: ${{ secrets.SUBNET_ID }}
         run: |
           # Idempotent: only updates if there are changes.
           bunx cdk deploy \
             --require-approval never \
-            -c environmentName=${{ env.ENVIRONMENT_NAME }} \
-            -c vpcId=${{ secrets.VPC_ID }} \
-            -c subnetId=${{ secrets.SUBNET_ID }}
+            -c environmentName="$ENVIRONMENT_NAME" \
+            -c vpcId="$VPC_ID" \
+            -c subnetId="$SUBNET_ID"
 
       # Uploads server/auth bundles to S3, installs them via SSM Run Command, then syncs the client.
       - name: Release servers and client
+        if: ${{ env.SKIP != 'true' }}
         run: bun run release
