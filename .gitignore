@@ -8,3 +8,4 @@ test-results/
 playwright-report/
 cdk.out/
 .parcel-cache
+.claude/

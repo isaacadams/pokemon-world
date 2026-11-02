@@ -1,9 +1,22 @@
 const config = {
-   port: Number(process.env.PORT || process.env.port || 8080)
+   port: Number(process.env.PORT || process.env.port || 8080),
+   // Comma-separated browser origins allowed to connect; unset allows any (local dev).
+   allowedOrigins: String(process.env.ALLOWED_ORIGINS || "")
+      .split(",")
+      .map(o => o.trim())
+      .filter(Boolean),
+   maxClients: Number(process.env.WS_MAX_CLIENTS || 200),
+   maxPayloadBytes: Number(process.env.WS_MAX_PAYLOAD_BYTES || 4096),
+   // Per-connection message budget; the client sends one update per frame while moving.
+   maxMessagesPerSecond: Number(process.env.WS_MAX_MESSAGES_PER_SECOND || 200)
 };
 
 const WebSocket = require("ws");
-const server = new WebSocket.Server({ port: config.port });
+const server = new WebSocket.Server({
+   port: config.port,
+   maxPayload: config.maxPayloadBytes,
+   verifyClient: ({ origin }) => config.allowedOrigins.length === 0 || config.allowedOrigins.includes(origin)
+});
 
 // Heartbeat/idle-timeout: terminate unresponsive clients to avoid ghost players
 // Modes:
@@ -53,6 +66,11 @@ class PlayerStateManager {
 const manager = new PlayerStateManager();
 
 server.on("connection", ws => {
+   if (server.clients.size > config.maxClients) {
+      ws.close(1013, "server full");
+      return;
+   }
+
    // Initialize heartbeat state and pong handler
    ws.isAlive = true;
    ws.on("pong", markAlive);
@@ -77,18 +95,30 @@ server.on("connection", ws => {
    // Notify all players of the new connection (name may be updated later via "hello")
    broadcast({ type: "join", id: player.id, x: player.position.x, y: player.position.y, name: player.name });
 
+   let windowStartMs = Date.now();
+   let windowCount = 0;
+
    ws.on("message", message => {
       // Any message counts as activity
       ws.isAlive = true;
       ws.lastActivityMs = Date.now();
-      const data = JSON.parse(message);
+
+      if (ws.lastActivityMs - windowStartMs >= 1000) {
+         windowStartMs = ws.lastActivityMs;
+         windowCount = 0;
+      }
+      if (++windowCount > config.maxMessagesPerSecond) return;
+
+      const data = parseMessage(message);
+      if (!data) return;
       if (data.type === "update") {
+         if (!Number.isFinite(data.x) || !Number.isFinite(data.y)) return;
          // Update player position
          player.position.x = data.x;
          player.position.y = data.y;
 
-         // Broadcast to all other players
-         broadcast({ type: "update", id: data.id, x: data.x, y: data.y }, ws);
+         // Broadcast to all other players; the id is the sender's, never client-supplied
+         broadcast({ type: "update", id: player.id, x: data.x, y: data.y }, ws);
       } else if (data.type === "hello") {
          // Client provides display name after connection
          if (typeof data.name === "string" && data.name.trim().length > 0) {
@@ -116,6 +146,16 @@ function broadcast(message, excludeWs = null) {
          client.send(JSON.stringify(message));
       }
    });
+}
+
+// Returns the parsed message object, or null for malformed input.
+function parseMessage(message) {
+   try {
+      const data = JSON.parse(message);
+      return data && typeof data === "object" ? data : null;
+   } catch {
+      return null;
+   }
 }
 
 function generateUniqueId() {

@@ -22,6 +22,8 @@ function pin(construct: Construct, logicalId: string) {
 // (AWS's default kernel; 6.18 as of this pin). Changing it replaces the instance;
 // it reinstalls releases/latest on boot.
 export const AMI_ID = "ami-0c230065b91270bc6";
+// Root volume size; must be >= the AMI's root snapshot (8 GiB for the pin above).
+export const ROOT_VOLUME_GIB = 8;
 
 interface UserDataProps {
    artifactBucket: string;
@@ -90,6 +92,7 @@ ConditionPathExists=/opt/pokemon-world/current/server.js
 [Service]
 DynamicUser=yes
 Environment=PORT=8080
+Environment=ALLOWED_ORIGINS=${clientUrl}
 ExecStart=/usr/bin/node /opt/pokemon-world/current/server.js
 Restart=always
 
@@ -186,6 +189,14 @@ export class PokemonWorldStack extends cdk.Stack {
          // t3 defaults to "unlimited" credits (surplus CPU is billed); standard throttles instead.
          creditSpecification: { cpuCredits: "standard" },
          imageId: AMI_ID,
+         // IMDSv2 only: session tokens block SSRF-style theft of the instance role's credentials.
+         metadataOptions: { httpTokens: "required", httpEndpoint: "enabled", httpPutResponseHopLimit: 1 },
+         // Encrypted root volume (AL2023's root device). Changing this replaces the instance.
+         // CloudFormation requires a size or snapshot; 8 GiB is the AMI's root snapshot size
+         // (must stay >= it when bumping AMI_ID).
+         blockDeviceMappings: [
+            { deviceName: "/dev/xvda", ebs: { encrypted: true, volumeType: "gp3", volumeSize: ROOT_VOLUME_GIB } }
+         ],
          iamInstanceProfile: instanceProfile.ref,
          securityGroupIds: [securityGroup.ref],
          subnetId,

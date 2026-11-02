@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as cdk from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { AMI_ID, PokemonWorldStack } from "../lib/pokemon-world-stack";
+import { AMI_ID, PokemonWorldStack, ROOT_VOLUME_GIB } from "../lib/pokemon-world-stack";
 
 const app = new cdk.App();
 const stack = new PokemonWorldStack(app, "Test", {
@@ -58,5 +58,18 @@ describe("PokemonWorldStack", () => {
       const policy = JSON.stringify(template.findResources("AWS::IAM::Policy"));
       expect(policy).toContain("parameter/pokemon-world/dev/slack-client-secret");
       expect(policy).toContain("/releases/*");
+   });
+
+   test("instance requires IMDSv2 and encrypts its root volume", () => {
+      template.hasResourceProperties("AWS::EC2::Instance", {
+         MetadataOptions: { HttpTokens: "required" },
+         // CloudFormation rejects an Ebs mapping with neither VolumeSize nor SnapshotId.
+         BlockDeviceMappings: [{ DeviceName: "/dev/xvda", Ebs: { Encrypted: true, VolumeSize: ROOT_VOLUME_GIB } }]
+      });
+   });
+
+   test("WebSocket server only accepts the game site's origin", () => {
+      const instance = template.findResources("AWS::EC2::Instance").WebSocketServerInstance;
+      expect(JSON.stringify(instance.Properties.UserData)).toContain("Environment=ALLOWED_ORIGINS=");
    });
 });

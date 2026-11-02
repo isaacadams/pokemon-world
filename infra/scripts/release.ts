@@ -19,7 +19,8 @@ const output = (key: string) => {
 };
 
 async function releaseServer() {
-   const release = (process.env.GITHUB_SHA ?? (await $`git -C ${root} rev-parse HEAD`.text())).trim().slice(0, 12);
+   // The checked-out commit, not GITHUB_SHA: a manual deploy of an older tag runs with GITHUB_SHA = main.
+   const release = (await $`git -C ${root} rev-parse HEAD`.text()).trim().slice(0, 12);
    const prefix = `s3://${output("ArtifactBucketName")}/releases`;
    const instanceId = output("EC2InstanceId");
 

@@ -172,7 +172,11 @@ class IntroScreen {
 
          const redirectUri = window.location.origin + "/callback.html";
          const scope = "identity.basic identity.email identity.avatar";
-         window.location.href = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&user_scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+         // CSRF protection: callback.ts only accepts a code returned with this state.
+         // getRandomValues, not randomUUID: the site is served over plain HTTP (not a secure context).
+         const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join("");
+         sessionStorage.setItem("oauth_state", state);
+         window.location.href = `https://slack.com/oauth/v2/authorize?client_id=${clientId}&user_scope=${encodeURIComponent(scope)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
       });
 
       document.getElementById("guest-login")!.addEventListener("click", () => {
