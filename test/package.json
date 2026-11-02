@@ -10,6 +10,6 @@
    "license": "ISC",
    "description": "End-to-end Playwright tests against the client dev server",
    "devDependencies": {
-      "@playwright/test": "^1.51.0"
+      "@playwright/test": "^1.64.1"
    }
 }

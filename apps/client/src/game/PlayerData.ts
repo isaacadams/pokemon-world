@@ -8,7 +8,7 @@ const Schema = z.object({
    user: z.object({
       name: z.string(),
       id: z.string(),
-      email: z.string().email()
+      email: z.email()
    }),
    team: z.object({
       id: z.string()

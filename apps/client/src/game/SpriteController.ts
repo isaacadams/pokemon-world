@@ -62,14 +62,12 @@ export class SpriteCache {
 
    async player(config: SpriteConfig) {
       const texture = await PIXI.Assets.load(playerSprite);
-      const baseTexture = texture.baseTexture;
-      return new PokemonPlayerController(baseTexture, config);
+      return new PokemonPlayerController(texture.source, config);
    }
 
    async createFromSheet(sheetPath: string, config: SpriteConfig) {
       const texture = await PIXI.Assets.load(sheetPath);
-      const baseTexture = texture.baseTexture;
-      return new PokemonPlayerController(baseTexture, config);
+      return new PokemonPlayerController(texture.source, config);
    }
 }
 
@@ -77,22 +75,22 @@ class PokemonPlayerController implements SpriteController {
    private animations: { [key: string]: AnimationState } = {};
 
    constructor(
-      readonly texture: PIXI.BaseTexture,
+      readonly texture: PIXI.TextureSource,
       private readonly config: SpriteConfig
    ) {
       const createFrames = (startIndex: number): PIXI.Texture[] => {
          const frames: PIXI.Texture[] = [];
          for (let i = 0; i < this.config.frame_count; i++) {
             frames.push(
-               new PIXI.Texture(
-                  texture,
-                  new PIXI.Rectangle(
+               new PIXI.Texture({
+                  source: texture,
+                  frame: new PIXI.Rectangle(
                      i * config.sprite_size,
                      startIndex * config.sprite_size,
                      config.sprite_size,
                      config.sprite_size
                   )
-               )
+               })
             );
          }
          return frames;

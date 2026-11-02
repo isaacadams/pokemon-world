@@ -20,10 +20,13 @@ function initializeGame(opts: { scenario?: string; name?: string } = {}) {
       PlayerData.set(PlayerData.createDefaultData(earlyName));
    }
 
-   new GuestModePlugin(game);
-   game.render();
+   // PIXI v8 creates the renderer and ticker asynchronously.
+   game.ready.then(() => {
+      new GuestModePlugin(game);
+      game.render();
+   });
 
-   cache.load().then(c => {
+   Promise.all([game.ready, cache.load()]).then(([, c]) => {
       game.initializePlayer(c.player);
       game.setupWebSocket(c.player);
       game.start();
