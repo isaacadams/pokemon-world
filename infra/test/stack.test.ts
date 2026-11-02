@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import * as cdk from "aws-cdk-lib";
 import { Match, Template } from "aws-cdk-lib/assertions";
-import { PokemonWorldStack } from "../lib/pokemon-world-stack";
+import { AMI_ID, PokemonWorldStack } from "../lib/pokemon-world-stack";
 
 const app = new cdk.App();
 const stack = new PokemonWorldStack(app, "Test", {
@@ -28,6 +28,11 @@ describe("PokemonWorldStack", () => {
       const sg = template.findResources("AWS::EC2::SecurityGroup").WebSocketSecurityGroup;
       expect(sg.Properties.SecurityGroupIngress.map((r: { FromPort: number }) => r.FromPort)).toEqual([8080, 3000]);
       template.hasResourceProperties("AWS::EC2::Instance", { KeyName: Match.absent() });
+   });
+
+   test("instance uses the pinned AMI", () => {
+      template.hasResourceProperties("AWS::EC2::Instance", { ImageId: AMI_ID });
+      expect(AMI_ID).toMatch(/^ami-[0-9a-f]{17}$/);
    });
 
    test("EIP is associated by allocation ID", () => {

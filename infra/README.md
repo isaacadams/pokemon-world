@@ -18,6 +18,8 @@ Settings
 - `environmentName`, `vpcId`, `subnetId` live in `cdk.json` context. Override with `-c key=value`.
 - Uses `CliCredentialsStackSynthesizer`: deploys with your own credentials. No `cdk bootstrap` needed.
 - Pick credentials with `AWS_PROFILE=spot-dev`.
+- us-east-1 only.
+- AMI is pinned (`AMI_ID` in `lib/pokemon-world-stack.ts`). Bump it before its deprecation date. Bumping replaces the instance, which reinstalls `releases/latest` on boot.
 
 Releases
 --------

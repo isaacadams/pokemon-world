@@ -16,6 +16,12 @@ function pin(construct: Construct, logicalId: string) {
    cfn.overrideLogicalId(logicalId);
 }
 
+// Pinned on purpose: al2023-ami-2023.12.20261102.0-kernel-6.1-x86_64 (us-east-1, owner amazon).
+// AWS deprecates it 2027-01-28. To bump, pick the newest image from
+//   aws ssm get-parameter --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
+// Changing it replaces the instance; it reinstalls releases/latest on boot.
+export const AMI_ID = "ami-0820d0c589175bc01";
+
 interface UserDataProps {
    artifactBucket: string;
    region: string;
@@ -32,6 +38,9 @@ set -euxo pipefail
 
 # The Elastic IP is associated after launch; wait for outbound access.
 for i in $(seq 60); do curl -sf -o /dev/null https://rpm.nodesource.com && break; sleep 5; done
+
+# Security/bug fixes within the AMI's locked AL2023 release version.
+dnf update -y
 
 curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
 dnf install -y nodejs
@@ -173,7 +182,7 @@ export class PokemonWorldStack extends cdk.Stack {
 
       const instance = new ec2.CfnInstance(this, "WebSocketServerInstance", {
          instanceType: "t2.micro",
-         imageId: "ami-0ebfd941bbafe70c6",
+         imageId: AMI_ID,
          iamInstanceProfile: instanceProfile.ref,
          securityGroupIds: [securityGroup.ref],
          subnetId,
@@ -188,7 +197,6 @@ export class PokemonWorldStack extends cdk.Stack {
          )
       });
       pin(instance, "WebSocketServerInstance");
-
       const eip = new ec2.CfnEIP(this, "WebSocketServerEIP", { domain: "vpc" });
       pin(eip, "WebSocketServerEIP");
 

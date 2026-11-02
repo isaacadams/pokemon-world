@@ -7,10 +7,6 @@ on:
         description: "Environment name (e.g., dev, production)"
         required: true
         default: "dev"
-      region:
-        description: "AWS region"
-        required: true
-        default: "us-east-1"
       deploy_infra:
         description: "Run CDK deploy to update infra (idempotent)"
         required: true
@@ -23,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ENVIRONMENT_NAME: ${{ inputs.environment || 'dev' }}
-      AWS_REGION: ${{ inputs.region || 'us-east-1' }}
+      # The stack is pinned to us-east-1 (region-specific AMI, VPC and subnet).
+      AWS_REGION: us-east-1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,8 +41,6 @@ jobs:
       - name: Optionally deploy/update infrastructure (CDK)
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy_infra == 'true') || (github.event_name == 'push') }}
         working-directory: infra
-        env:
-          CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: |
           # Idempotent: only updates if there are changes.
           bunx cdk deploy \
