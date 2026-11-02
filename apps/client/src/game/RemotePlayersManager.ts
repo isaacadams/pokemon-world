@@ -22,15 +22,17 @@ export class RemotePlayerManager {
          sprite: this.controller.create(x, y)
       };
       player.sprite.tint = 0x0000ff; // Blue for remote players
-      const label = new PIXI.Text(name, {
-         fontFamily: "Arial",
-         fontSize: 14,
-         fill: 0xffffff,
-         stroke: 0x000000,
-         strokeThickness: 3,
-         align: "center"
-      } as any);
-      (label as any).anchor?.set?.(0.5, 1);
+      const label = new PIXI.Text({
+         text: name,
+         style: {
+            fontFamily: "Arial",
+            fontSize: 14,
+            fill: 0xffffff,
+            stroke: { color: 0x000000, width: 3 },
+            align: "center"
+         }
+      });
+      label.anchor.set(0.5, 1);
       label.x = player.sprite.x;
       label.y = player.sprite.y - player.sprite.height * 0.7;
 

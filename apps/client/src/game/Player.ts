@@ -28,15 +28,17 @@ export class Player {
 
       const localData = PlayerData.check();
       const displayName = localData?.user?.name || "Player";
-      this.nameLabel = new PIXI.Text(displayName, {
-         fontFamily: "Arial",
-         fontSize: 14,
-         fill: 0xffffff,
-         stroke: 0x000000,
-         strokeThickness: 3,
-         align: "center"
-      } as any);
-      (this.nameLabel as any).anchor?.set?.(0.5, 1);
+      this.nameLabel = new PIXI.Text({
+         text: displayName,
+         style: {
+            fontFamily: "Arial",
+            fontSize: 14,
+            fill: 0xffffff,
+            stroke: { color: 0x000000, width: 3 },
+            align: "center"
+         }
+      });
+      this.nameLabel.anchor.set(0.5, 1);
       this.nameLabel.x = this.state.sprite.x;
       this.nameLabel.y = this.state.sprite.y - this.state.sprite.height * 0.7;
 
@@ -81,7 +83,7 @@ export class Player {
    }
 
    public getBounds(): PIXI.Rectangle {
-      return this.state.sprite.getBounds();
+      return this.state.sprite.getBounds().rectangle;
    }
 
    public get sprite(): PIXI.AnimatedSprite {

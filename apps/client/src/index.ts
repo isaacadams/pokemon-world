@@ -12,15 +12,20 @@ class IntroScreen {
    private menuBounds = { width: 600, height: 400 };
 
    constructor() {
-      this.app = new PIXI.Application({
+      this.app = new PIXI.Application();
+      this.init();
+   }
+
+   private async init(): Promise<void> {
+      await this.app.init({
          width: window.innerWidth,
          height: window.innerHeight,
-         backgroundColor: 0x000000,
+         background: 0x000000,
          resizeTo: window
       });
 
-      document.getElementById("loading-canvas")!.appendChild(this.app.view as HTMLCanvasElement);
-      this.loadAssets();
+      document.getElementById("loading-canvas")!.appendChild(this.app.canvas);
+      await this.loadAssets();
    }
 
    private async loadAssets(): Promise<void> {
@@ -57,7 +62,7 @@ class IntroScreen {
 
       this.app.stage.addChild(this.pokemon1, this.pokemon2);
       this.app.render(); // Force initial render
-      this.app.ticker.add(delta => this.update(delta));
+      this.app.ticker.add(ticker => this.update(ticker.deltaTime));
    }
 
    private update(delta: number): void {
@@ -145,8 +150,8 @@ class IntroScreen {
       if (mainMenu) {
          console.log("Starting fade-out of loading overlay");
          let alpha = 1;
-         const fadeOut = (delta: number) => {
-            alpha -= 0.05 * delta;
+         const fadeOut = (ticker: PIXI.Ticker) => {
+            alpha -= 0.05 * ticker.deltaTime;
             console.log(`Fading overlay, opacity: ${alpha}`);
             if (alpha <= 0) {
                console.log("Fade-out complete, showing main menu");

@@ -2,7 +2,7 @@ const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
 const app = express();
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const config = {
    CLIENT_URL: String(process.env.CLIENT_URL || "http://localhost:9000"),

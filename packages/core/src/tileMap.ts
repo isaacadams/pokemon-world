@@ -37,12 +37,14 @@ export class TileMap {
       // debugging when hovering over tiles (gated by debugMode)
       this.hoverDebugGraphics = new PIXI.Graphics();
       this.hoverDebugGraphics.visible = false;
-      this.hoverDebugText = new PIXI.Text("Debug Mode Off", {
-         fontFamily: "Arial",
-         fontSize: 16,
-         fill: 0x00ffff,
-         stroke: 0x000000,
-         strokeThickness: 2
+      this.hoverDebugText = new PIXI.Text({
+         text: "Debug Mode Off",
+         style: {
+            fontFamily: "Arial",
+            fontSize: 16,
+            fill: 0x00ffff,
+            stroke: { color: 0x000000, width: 2 }
+         }
       });
       this.hoverDebugText.x = 10;
       this.hoverDebugText.y = 675;
@@ -100,8 +102,9 @@ export class TileMap {
                spriteTile.sprite.on("pointerover", _ => {
                   if (!this.debugMode || !this.hoverDebugGraphics || !this.hoverDebugText) return;
                   this.hoverDebugGraphics.clear();
-                  this.hoverDebugGraphics.lineStyle(2, 0xff0000, 0.8);
-                  this.hoverDebugGraphics.drawRect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize);
+                  this.hoverDebugGraphics
+                     .rect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize)
+                     .stroke({ width: 2, color: 0xff0000, alpha: 0.8 });
 
                   this.hoverDebugText.visible = true;
                   this.hoverDebugText.text = `x:${x}, y:${y}\ntile id: ${tileId - 1}`;
@@ -130,7 +133,7 @@ export class TileMap {
       return this.container;
    }
 
-   public getTilesetTextures(): PIXI.BaseTexture[] {
+   public getTilesetTextures(): PIXI.TextureSource[] {
       return this.atlas.baseTextures();
    }
 

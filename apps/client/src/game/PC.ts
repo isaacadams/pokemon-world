@@ -26,24 +26,24 @@ export class PC {
 
       // Create interaction zone
       this.interactionZone = new PIXI.Graphics();
-      this.interactionZone.lineStyle(2, 0xffffff, 0.5);
-      this.interactionZone.drawCircle(0, 0, this.interactionDistance);
+      this.interactionZone.circle(0, 0, this.interactionDistance).stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
       this.interactionZone.x = x + this.sprite.width / 2;
       this.interactionZone.y = y + this.sprite.height / 2;
       this.interactionZone.alpha = 0;
 
       // Create debug text (only visible in debug mode)
-      this.debugText = new PIXI.Text("", {
-         fontFamily: "Arial",
-         fontSize: 10,
-         fill: "white",
-         stroke: "black",
-         strokeThickness: 2
+      this.debugText = new PIXI.Text({
+         text: "",
+         style: {
+            fontFamily: "Arial",
+            fontSize: 10,
+            fill: "white",
+            stroke: { color: "black", width: 2 }
+         }
       });
       this.debugText.x = x;
       this.debugText.y = y + 60;
       this.debugText.visible = this.debugMode;
-      this.sprite.addChild(this.debugText);
 
       // Create the PC interface container (initially hidden)
       this.interface = new PIXI.Container();
@@ -51,9 +51,7 @@ export class PC {
 
       // Create a background for the PC interface
       const background = new PIXI.Graphics();
-      background.beginFill(0x333333, 0.9);
-      background.drawRect(0, 0, 600, 400);
-      background.endFill();
+      background.rect(0, 0, 600, 400).fill({ color: 0x333333, alpha: 0.9 });
       this.interface.addChild(background);
 
       // Add title text
@@ -62,7 +60,7 @@ export class PC {
          fontSize: 24,
          fill: "white"
       });
-      const title = new PIXI.Text("Pokémon Storage System", style);
+      const title = new PIXI.Text({ text: "Pokémon Storage System", style });
       title.x = 20;
       title.y = 20;
       this.interface.addChild(title);
@@ -98,8 +96,8 @@ export class PC {
       };
 
       const playerCenter = {
-         x: playerBounds.x - this.sprite.parent.x,
-         y: playerBounds.y - this.sprite.parent.y
+         x: playerBounds.x - this.sprite.parent!.x,
+         y: playerBounds.y - this.sprite.parent!.y
       };
 
       const distance = Math.sqrt(
@@ -121,6 +119,10 @@ CanInteract: ${this.canInteract}`;
       return this.canInteract;
    }
 
+   public getDebugText(): PIXI.Text {
+      return this.debugText;
+   }
+
    public getInteractionZone(): PIXI.Graphics {
       return this.interactionZone;
    }
@@ -137,10 +139,13 @@ CanInteract: ${this.canInteract}`;
       this.interface.visible = true;
 
       // Add close button functionality
-      const closeButton = new PIXI.Text("X", {
-         fontFamily: "Arial",
-         fontSize: 20,
-         fill: "white"
+      const closeButton = new PIXI.Text({
+         text: "X",
+         style: {
+            fontFamily: "Arial",
+            fontSize: 20,
+            fill: "white"
+         }
       });
       closeButton.x = this.interface.width - 30;
       closeButton.y = 10;

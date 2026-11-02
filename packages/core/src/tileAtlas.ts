@@ -12,7 +12,7 @@ const MAX_TEXTURE_SIZE = 4096;
  */
 export class TileAtlas {
    private readonly image = new Image();
-   private readonly chunks = new Map<number, { canvas: HTMLCanvasElement; base: PIXI.BaseTexture }>();
+   private readonly chunks = new Map<number, { canvas: HTMLCanvasElement; base: PIXI.TextureSource }>();
    private readonly rowsPerChunk: number;
    readonly loaded: Promise<void>;
 
@@ -45,10 +45,10 @@ export class TileAtlas {
          this.tileSize,
          this.tileSize
       );
-      return new PIXI.Texture(base, frame);
+      return new PIXI.Texture({ source: base, frame });
    }
 
-   baseTextures(): PIXI.BaseTexture[] {
+   baseTextures(): PIXI.TextureSource[] {
       return [...this.chunks.values()].map(c => c.base);
    }
 
@@ -59,10 +59,11 @@ export class TileAtlas {
          canvas.width = this.columns * this.tileSize;
          canvas.height = this.rowsPerChunk * this.tileSize;
          // Crisp sampling avoids seams between tiles.
-         const base = PIXI.BaseTexture.from(canvas, {
-            scaleMode: PIXI.SCALE_MODES.NEAREST,
-            mipmap: PIXI.MIPMAP_MODES.OFF,
-            wrapMode: PIXI.WRAP_MODES.CLAMP
+         const base = new PIXI.CanvasSource({
+            resource: canvas,
+            scaleMode: "nearest",
+            autoGenerateMipmaps: false,
+            addressMode: "clamp-to-edge"
          });
          chunk = { canvas, base };
          this.chunks.set(index, chunk);
@@ -71,7 +72,7 @@ export class TileAtlas {
       return chunk;
    }
 
-   private fill({ canvas, base }: { canvas: HTMLCanvasElement; base: PIXI.BaseTexture }, index: number) {
+   private fill({ canvas, base }: { canvas: HTMLCanvasElement; base: PIXI.TextureSource }, index: number) {
       const ctx = canvas.getContext("2d")!;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(this.image, 0, -index * canvas.height);

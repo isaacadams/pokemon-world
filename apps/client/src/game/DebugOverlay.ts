@@ -22,12 +22,14 @@ export class DebugOverlay {
       this.debugGraphics = new PIXI.Graphics();
       this.debugGraphics.visible = false;
 
-      this.debugText = new PIXI.Text("Debug Mode Off", {
-         fontFamily: "Arial",
-         fontSize: 16,
-         fill: 0x00ffff,
-         stroke: 0x000000,
-         strokeThickness: 2
+      this.debugText = new PIXI.Text({
+         text: "Debug Mode Off",
+         style: {
+            fontFamily: "Arial",
+            fontSize: 16,
+            fill: 0x00ffff,
+            stroke: { color: 0x000000, width: 2 }
+         }
       });
       this.debugText.x = 10;
       this.debugText.y = -120;
@@ -84,13 +86,9 @@ export class DebugOverlay {
 
                touchedTiles.push({ x, y, id: tileId });
 
-               this.debugGraphics.lineStyle(2, this.layerColors[layer % this.layerColors.length], 0.8);
-               this.debugGraphics.drawRect(
-                  x * this.tileSize,
-                  y * this.tileSize,
-                  this.tileSize,
-                  this.tileSize
-               );
+               this.debugGraphics
+                  .rect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize)
+                  .stroke({ width: 2, color: this.layerColors[layer % this.layerColors.length], alpha: 0.8 });
             }
          }
 
@@ -103,8 +101,9 @@ export class DebugOverlay {
       this.debugText.text = debugInfo;
 
       // Draw the yellow collision box
-      this.debugGraphics.lineStyle(2, 0xffff00, 1); // Yellow
-      this.debugGraphics.drawRect(collisionBox.x, collisionBox.y, collisionBox.width, collisionBox.height);
+      this.debugGraphics
+         .rect(collisionBox.x, collisionBox.y, collisionBox.width, collisionBox.height)
+         .stroke({ width: 2, color: 0xffff00, alpha: 1 }); // Yellow
       (window as any).debugInfo = debugInfo;
    }
 

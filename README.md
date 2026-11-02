@@ -3,7 +3,7 @@
 Terse quickstart for getting the app running locally.
 
 ### Prerequisites
-- Bun 1.2+ (`curl -fsSL https://bun.sh/install | bash`)
+- Bun 1.4+ (`curl -fsSL https://bun.sh/install | bash`)
 
 ### Install
 ```bash
