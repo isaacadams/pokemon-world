@@ -49,9 +49,14 @@ jobs:
       - name: Create pre-release
         run: |
           assets="apps/server/dist/server.js apps/auth/dist/auth.js"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            # Release drafted in the UI (which also pushes the tag): just attach assets.
+          # Releases are immutable once published: assets can only be added to drafts.
+          # `gh release create` uploads assets to a draft before publishing it.
+          draft=$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null || echo none)
+          if [ "$draft" = "none" ]; then
+            gh release create "$TAG" $assets --verify-tag --prerelease --generate-notes --title "$TAG"
+          elif [ "$draft" = "true" ]; then
+            # A draft for this tag already exists (e.g. made in the UI): attach assets.
             gh release upload "$TAG" $assets --clobber
           else
-            gh release create "$TAG" $assets --verify-tag --prerelease --generate-notes --title "$TAG"
+            echo "::notice::$TAG was already published (immutable); skipping asset upload"
           fi

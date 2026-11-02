@@ -75,6 +75,8 @@ CI release flow (pushes to `main` do not deploy):
 4. `deploy.yml` deploys it (only if it is Latest).
 5. Redeploy or roll back: run `deploy.yml` manually with a tag (`gh workflow run deploy.yml -f tag=v1.2.2`).
 
+- `v*` tags are protected: only admins create them; nobody can move or delete them. Releases are immutable once published. Fix a bad release with a new version.
+
 Manual deploy:
 
 2) Release servers + client (no SSH)
