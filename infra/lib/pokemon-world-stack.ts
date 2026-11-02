@@ -16,11 +16,12 @@ function pin(construct: Construct, logicalId: string) {
    cfn.overrideLogicalId(logicalId);
 }
 
-// Pinned on purpose: al2023-ami-2023.12.20261102.0-kernel-6.1-x86_64 (us-east-1, owner amazon).
+// Pinned on purpose: al2023-ami-2023.12.20261102.0-kernel-6.18-x86_64 (us-east-1, owner amazon).
 // AWS deprecates it 2027-01-28. To bump, pick the newest image from
-//   aws ssm get-parameter --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-6.1-x86_64
-// Changing it replaces the instance; it reinstalls releases/latest on boot.
-export const AMI_ID = "ami-0820d0c589175bc01";
+//   aws ssm get-parameter --name /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+// (AWS's default kernel; 6.18 as of this pin). Changing it replaces the instance;
+// it reinstalls releases/latest on boot.
+export const AMI_ID = "ami-0c230065b91270bc6";
 
 interface UserDataProps {
    artifactBucket: string;
@@ -181,7 +182,9 @@ export class PokemonWorldStack extends cdk.Stack {
       pin(instanceProfile, "WebSocketServerInstanceProfile");
 
       const instance = new ec2.CfnInstance(this, "WebSocketServerInstance", {
-         instanceType: "t2.micro",
+         instanceType: "t3.micro",
+         // t3 defaults to "unlimited" credits (surplus CPU is billed); standard throttles instead.
+         creditSpecification: { cpuCredits: "standard" },
          imageId: AMI_ID,
          iamInstanceProfile: instanceProfile.ref,
          securityGroupIds: [securityGroup.ref],

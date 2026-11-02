@@ -35,6 +35,13 @@ describe("PokemonWorldStack", () => {
       expect(AMI_ID).toMatch(/^ami-[0-9a-f]{17}$/);
    });
 
+   test("instance is a t3.micro with standard (capped) CPU credits", () => {
+      template.hasResourceProperties("AWS::EC2::Instance", {
+         InstanceType: "t3.micro",
+         CreditSpecification: { CPUCredits: "standard" }
+      });
+   });
+
    test("EIP is associated by allocation ID", () => {
       template.hasResourceProperties("AWS::EC2::EIPAssociation", {
          AllocationId: { "Fn::GetAtt": ["WebSocketServerEIP", "AllocationId"] },
