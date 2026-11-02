@@ -19,26 +19,23 @@ def "main deploy" [] {
 }
 
 def "main upload client" [] {
-    bun run --filter @pokemon-world/game build
-    aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/
+    bun run release --only client
 }
 
-# nu commands.nu upload server wss
-def "main upload server" [name: string] {
-    match $name {
-        # authentication for slack, runs on port 3000
-        "auth" => {
-            #scp -r auth pokemon-world:/home/ec2-user/auth
-            rsync -avz --exclude 'node_modules' apps/auth/ pokemon-world:/home/ec2-user/auth
-            ssh pokemon-world "cd /home/ec2-user/auth && npm i && mv .env.production .env && (tmux has-session -t auth 2>/dev/null && tmux kill-session -t auth || true) && tmux new-session -d -s auth 'node server.js'"
-        }
-        # websocket, port: 8000
-        "wss" => {
-            #aws s3 cp apps/server/server.js s3://my-game-server-artifacts-dev-389616631340/
-            rsync -avz --exclude 'node_modules' apps/server/ pokemon-world:/home/ec2-user/wss
-            ssh pokemon-world "cd /home/ec2-user/wss && npm i && (tmux has-session -t wss 2>/dev/null && tmux kill-session -t wss || true) && PORT=8080 tmux new-session -d -s wss 'node server.js'"
-        }
-    }
+# wss + auth: upload to S3, install on EC2 via SSM Run Command
+def "main upload server" [] {
+    bun run release --only server
+}
+
+# shell on the EC2 instance via SSM Session Manager (needs session-manager-plugin)
+def "main shell" [] {
+    let id = aws cloudformation describe-stacks --stack-name pokemon-world --region us-east-1 --query "Stacks[0].Outputs[?OutputKey=='EC2InstanceId'].OutputValue" --output text
+    aws ssm start-session --target $id --region us-east-1
+}
+
+# store the auth server's Slack secret; picked up on the next release
+def "main secret" [value: string] {
+    aws ssm put-parameter --name /pokemon-world/dev/slack-client-secret --type SecureString --overwrite --value $value --region us-east-1
 }
 
 def "main env" [] {

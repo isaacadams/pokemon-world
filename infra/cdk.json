@@ -6,7 +6,6 @@
    "context": {
       "environmentName": "dev",
       "vpcId": "vpc-042b41e1a4ac077db",
-      "subnetId": "subnet-0cf0ccea8ffe916eb",
-      "keyPairName": "default"
+      "subnetId": "subnet-0cf0ccea8ffe916eb"
    }
 }

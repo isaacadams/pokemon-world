@@ -60,24 +60,23 @@ First run: `bunx playwright install --with-deps`.
 ### Deployed demo
 site: http://my-game-client-dev-389616631340.s3-website-us-east-1.amazonaws.com
 
-### Deploy (infra + client)
+### Deploy
 
-1) Deploy infrastructure (S3 website + EC2 WebSocket server) with CDK
+1) Infrastructure (S3 website + EC2 WebSocket server) with CDK
 ```bash
 AWS_PROFILE=spot-dev bun run deploy
 ```
 
-2) Build the client and upload to the S3 website bucket
+2) Release servers + client (no SSH)
 ```bash
-bun run build
-aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/ --delete
+AWS_PROFILE=spot-dev bun run release                 # everything
+AWS_PROFILE=spot-dev bun run release --only server   # wss + auth
+AWS_PROFILE=spot-dev bun run release --only client   # S3 website
 ```
 
+- See `infra/README.md` for how releases work and how to roll back.
+- CI does both steps on push to `main` (`.github/workflows/deploy.yml`).
 - You are hitting the S3 Website endpoint directly, so no CloudFront invalidation is needed.
-- Shortcut (Nushell):
-```bash
-nu -c 'use ./commands.nu *; main upload client'
-```
 
 ---
 

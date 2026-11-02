@@ -6,6 +6,7 @@
       "synth": "cdk synth",
       "diff": "cdk diff",
       "deploy": "cdk deploy",
+      "release": "bun scripts/release.ts",
       "test": "bun test",
       "typecheck": "tsc --noEmit"
    },

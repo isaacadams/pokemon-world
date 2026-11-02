@@ -24,8 +24,6 @@ jobs:
     env:
       ENVIRONMENT_NAME: ${{ inputs.environment || 'dev' }}
       AWS_REGION: ${{ inputs.region || 'us-east-1' }}
-      # `secrets` can't be used in step `if:` conditions, so expose a flag instead.
-      HAS_EC2: ${{ secrets.EC2_HOST != '' && secrets.EC2_SSH_KEY != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,54 +52,8 @@ jobs:
             --require-approval never \
             -c environmentName=${{ env.ENVIRONMENT_NAME }} \
             -c vpcId=${{ secrets.VPC_ID }} \
-            -c subnetId=${{ secrets.SUBNET_ID }} \
-            -c keyPairName=${{ secrets.KEY_PAIR_NAME }}
+            -c subnetId=${{ secrets.SUBNET_ID }}
 
-      - name: Fetch stack outputs
-        run: |
-          output() {
-            aws cloudformation describe-stacks \
-              --stack-name pokemon-world \
-              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
-              --output text
-          }
-          echo "WEBSOCKET_URL=$(output WebSocketServerUrl)" >> $GITHUB_ENV
-          echo "BUCKET_NAME=$(output GameBucketName)" >> $GITHUB_ENV
-          echo "SITE_URL=$(output GameSiteUrl)" >> $GITHUB_ENV
-
-      - name: Build client
-        env:
-          AUTH_SERVER_URL: ${{ secrets.EC2_HOST && format('http://{0}:3000', secrets.EC2_HOST) || '' }}
-        run: |
-          echo "Using WEBSOCKET_URL=$WEBSOCKET_URL"
-          bun run --filter @pokemon-world/game build
-
-      - name: Upload client to S3
-        run: aws s3 sync apps/client/dist/ s3://$BUCKET_NAME/ --delete
-
-      - name: Setup SSH
-        if: ${{ env.HAS_EC2 == 'true' }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          touch ~/.ssh/known_hosts
-          # Skip strict host checking for automation; consider pinning host key in the future
-          echo -e "Host ec2_target\n  HostName ${{ secrets.EC2_HOST }}\n  User ec2-user\n  IdentityFile ~/.ssh/id_rsa\n  StrictHostKeyChecking no" >> ~/.ssh/config
-
-      - name: Deploy auth server via rsync and restart
-        if: ${{ env.HAS_EC2 == 'true' }}
-        run: |
-          rsync -avz --delete --exclude 'node_modules' apps/auth/ ec2_target:/home/ec2-user/auth
-          ssh ec2_target "cd /home/ec2-user/auth && npm i && if [ -f .env.production ]; then mv -f .env.production .env; fi && (tmux has-session -t auth 2>/dev/null && tmux kill-session -t auth || true) && tmux new-session -d -s auth 'node server.js'"
-
-      - name: Deploy WebSocket server via rsync and restart
-        if: ${{ env.HAS_EC2 == 'true' }}
-        run: |
-          rsync -avz --delete --exclude 'node_modules' apps/server/ ec2_target:/home/ec2-user/wss
-          ssh ec2_target "cd /home/ec2-user/wss && npm i && (tmux has-session -t wss 2>/dev/null && tmux kill-session -t wss || true) && PORT=8080 tmux new-session -d -s wss 'node server.js'"
-
-      - name: Print deployed endpoints
-        run: |
-          echo "Game site: $SITE_URL"
-          echo "WebSocket: $WEBSOCKET_URL"
+      # Uploads server/auth bundles to S3, installs them via SSM Run Command, then syncs the client.
+      - name: Release servers and client
+        run: bun run release

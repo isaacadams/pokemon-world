@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 
@@ -7,45 +8,111 @@ export interface PokemonWorldStackProps extends cdk.StackProps {
    environmentName: string;
    vpcId: string;
    subnetId: string;
-   keyPairName: string;
 }
 
-// Logical IDs match the original SAM template so deploying over the existing
-// `pokemon-world` stack updates resources in place instead of replacing them.
+// Keep logical IDs stable (and short) regardless of construct nesting.
 function pin(construct: Construct, logicalId: string) {
    const cfn = (construct.node.defaultChild ?? construct) as cdk.CfnElement;
    cfn.overrideLogicalId(logicalId);
 }
 
-const userData = `#!/bin/bash
-dnf update -y
-yum update -y
+interface UserDataProps {
+   artifactBucket: string;
+   region: string;
+   clientUrl: string;
+   secretParameter: string;
+}
 
-curl -sL https://rpm.nodesource.com/setup_18.x | bash -
-yum install -y nodejs
+// Boots the instance: installs Node, systemd units for both servers, and
+// `pokemon-world-deploy`, which installs a release from S3 and restarts them.
+// Releases are pushed with `bun run release` (see infra/scripts/release.ts).
+function userData({ artifactBucket, region, clientUrl, secretParameter }: UserDataProps) {
+   return `#!/bin/bash
+set -euxo pipefail
 
-# need to ensure that this rule is also added to the security group
-dnf install -y firewalld
-systemctl start firewalld
-firewall-cmd --add-port=8080/tcp --permanent
-firewall-cmd --add-port=3000/tcp --permanent
-firewall-cmd --reload
+# The Elastic IP is associated after launch; wait for outbound access.
+for i in $(seq 60); do curl -sf -o /dev/null https://rpm.nodesource.com && break; sleep 5; done
 
-dnf install tmux -y
+curl -fsSL https://rpm.nodesource.com/setup_22.x | bash -
+dnf install -y nodejs
 
-mkdir -p /home/ec2-user/websocket-server
-cd /home/ec2-user/websocket-server
-aws s3 cp s3://\${ServerArtifactBucket}/server.js .
-npm init -y
-npm install ws
+mkdir -p /opt/pokemon-world/releases /etc/pokemon-world
 
-tmux new-session -d -s pokemon_world "node server.js"
+cat > /usr/local/bin/pokemon-world-deploy <<'EOF'
+#!/bin/bash
+# Usage: pokemon-world-deploy [release]  (defaults to releases/latest)
+set -euo pipefail
+bucket=${artifactBucket}
+region=${region}
+release=\${1:-}
+if [ -z "$release" ]; then
+   release=$(aws s3 cp "s3://$bucket/releases/latest" - --region "$region" 2>/dev/null || true)
+fi
+if [ -z "$release" ]; then
+   echo "no release published yet"
+   exit 0
+fi
+
+dir=/opt/pokemon-world/releases/$release
+mkdir -p "$dir"
+aws s3 cp --recursive "s3://$bucket/releases/$release/" "$dir/" --region "$region"
+touch "$dir" # newest mtime, so the prune below never removes the live release
+
+secret=$(aws ssm get-parameter --name "${secretParameter}" --with-decryption --query Parameter.Value --output text --region "$region" 2>/dev/null || true)
+install -m 600 /dev/null /etc/pokemon-world/auth.env
+printf 'CLIENT_URL=%s\\nSLACK_CLIENT_SECRET=%s\\n' "${clientUrl}" "$secret" > /etc/pokemon-world/auth.env
+
+ln -sfn "$dir" /opt/pokemon-world/current
+systemctl restart pokemon-wss pokemon-auth
+
+# Keep the five most recent releases for rollback.
+ls -1dt /opt/pokemon-world/releases/* | tail -n +6 | xargs -r rm -rf
+echo "deployed $release"
+EOF
+chmod 755 /usr/local/bin/pokemon-world-deploy
+
+cat > /etc/systemd/system/pokemon-wss.service <<'EOF'
+[Unit]
+Description=Pokemon World WebSocket server
+After=network-online.target
+ConditionPathExists=/opt/pokemon-world/current/server.js
+
+[Service]
+DynamicUser=yes
+Environment=PORT=8080
+ExecStart=/usr/bin/node /opt/pokemon-world/current/server.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/pokemon-auth.service <<'EOF'
+[Unit]
+Description=Pokemon World auth server
+After=network-online.target
+ConditionPathExists=/opt/pokemon-world/current/auth.js
+
+[Service]
+DynamicUser=yes
+EnvironmentFile=-/etc/pokemon-world/auth.env
+ExecStart=/usr/bin/node /opt/pokemon-world/current/auth.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable pokemon-wss pokemon-auth
+/usr/local/bin/pokemon-world-deploy
 `;
+}
 
 export class PokemonWorldStack extends cdk.Stack {
    constructor(scope: Construct, id: string, props: PokemonWorldStackProps) {
       super(scope, id, { analyticsReporting: false, ...props });
-      const { environmentName, vpcId, subnetId, keyPairName } = props;
+      const { environmentName, vpcId, subnetId } = props;
 
       const gameBucket = new s3.Bucket(this, "GameBucket", {
          bucketName: `my-game-client-${environmentName}-${this.account}`,
@@ -66,14 +133,18 @@ export class PokemonWorldStack extends cdk.Stack {
 
       const artifactBucket = new s3.Bucket(this, "ServerArtifactBucket", {
          bucketName: `my-game-server-artifacts-${environmentName}-${this.account}`,
-         objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED
+         objectOwnership: s3.ObjectOwnership.BUCKET_OWNER_ENFORCED,
+         blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+         enforceSSL: true,
+         lifecycleRules: [{ prefix: "releases/", expiration: cdk.Duration.days(90) }]
       });
       pin(artifactBucket, "ServerArtifactBucket");
 
+      // No SSH: shell access and deploys go through SSM (Session Manager / Run Command).
       const securityGroup = new ec2.CfnSecurityGroup(this, "WebSocketSecurityGroup", {
-         groupDescription: "Allow WebSocket traffic on port 8080",
+         groupDescription: "Allow WebSocket (8080) and auth (3000) traffic",
          vpcId,
-         securityGroupIngress: [8080, 3000, 22].map(port => ({
+         securityGroupIngress: [8080, 3000].map(port => ({
             ipProtocol: "tcp",
             fromPort: port,
             toPort: port,
@@ -82,15 +153,39 @@ export class PokemonWorldStack extends cdk.Stack {
       });
       pin(securityGroup, "WebSocketSecurityGroup");
 
+      const secretParameter = `/pokemon-world/${environmentName}/slack-client-secret`;
+      const role = new iam.Role(this, "WebSocketServerRole", {
+         assumedBy: new iam.ServicePrincipal("ec2.amazonaws.com"),
+         managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("AmazonSSMManagedInstanceCore")]
+      });
+      artifactBucket.grantRead(role, "releases/*");
+      role.addToPolicy(
+         new iam.PolicyStatement({
+            actions: ["ssm:GetParameter"],
+            resources: [this.formatArn({ service: "ssm", resource: "parameter", resourceName: secretParameter.slice(1) })]
+         })
+      );
+      pin(role, "WebSocketServerRole");
+      const instanceProfile = new iam.CfnInstanceProfile(this, "WebSocketServerInstanceProfile", {
+         roles: [role.roleName]
+      });
+      pin(instanceProfile, "WebSocketServerInstanceProfile");
+
       const instance = new ec2.CfnInstance(this, "WebSocketServerInstance", {
          instanceType: "t2.micro",
          imageId: "ami-0ebfd941bbafe70c6",
-         keyName: keyPairName,
+         iamInstanceProfile: instanceProfile.ref,
          securityGroupIds: [securityGroup.ref],
          subnetId,
          tags: [{ key: "Name", value: "WebSocketServer" }],
-         // `${ServerArtifactBucket}` resolves via Fn::Sub to the pinned logical ID above.
-         userData: cdk.Fn.base64(cdk.Fn.sub(userData))
+         userData: cdk.Fn.base64(
+            userData({
+               artifactBucket: artifactBucket.bucketName,
+               region: this.region,
+               clientUrl: gameBucket.bucketWebsiteUrl,
+               secretParameter
+            })
+         )
       });
       pin(instance, "WebSocketServerInstance");
 
@@ -99,7 +194,7 @@ export class PokemonWorldStack extends cdk.Stack {
 
       const eipAssociation = new ec2.CfnEIPAssociation(this, "WebSocketServerEIPAssociation", {
          instanceId: instance.ref,
-         eip: eip.ref
+         allocationId: eip.attrAllocationId
       });
       pin(eipAssociation, "WebSocketServerEIPAssociation");
 
@@ -111,13 +206,25 @@ export class PokemonWorldStack extends cdk.Stack {
          description: "S3 bucket the client build is synced to",
          value: gameBucket.bucketName
       });
+      new cdk.CfnOutput(this, "ArtifactBucketName", {
+         description: "S3 bucket server releases are uploaded to",
+         value: artifactBucket.bucketName
+      });
       new cdk.CfnOutput(this, "WebSocketServerUrl", {
          description: "URL of the WebSocket server",
          value: `ws://${eip.attrPublicIp}:8080`
       });
+      new cdk.CfnOutput(this, "AuthServerUrl", {
+         description: "URL of the auth server",
+         value: `http://${eip.attrPublicIp}:3000`
+      });
       new cdk.CfnOutput(this, "EC2InstanceId", {
          description: "ID of the EC2 instance running the WebSocket server",
          value: instance.ref
+      });
+      new cdk.CfnOutput(this, "SlackSecretParameter", {
+         description: "SSM SecureString holding the auth server's SLACK_CLIENT_SECRET",
+         value: secretParameter
       });
    }
 }

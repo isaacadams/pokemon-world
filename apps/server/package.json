@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build": "bun build server.js --target node --outfile dist/server.js",
     "start": "bun server.js",
     "test": "bun test"
   },

@@ -16,7 +16,8 @@
       "format": "prettier -w '**/*.{ts,js}'",
       "dev": "bun run --filter @pokemon-world/game dev",
       "start:dev": "bun packages/dst/scripts/run-scenario.js --client --devmode --duration 86400",
-      "deploy": "bun run --filter @repo/infra deploy"
+      "deploy": "bun run --filter @repo/infra deploy",
+      "release": "bun infra/scripts/release.ts"
    },
    "devDependencies": {
       "@types/bun": "^1.2.0",

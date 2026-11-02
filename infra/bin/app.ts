@@ -17,6 +17,5 @@ new PokemonWorldStack(app, "PokemonWorld", {
    synthesizer: new cdk.CliCredentialsStackSynthesizer(),
    environmentName: ctx("environmentName"),
    vpcId: ctx("vpcId"),
-   subnetId: ctx("subnetId"),
-   keyPairName: ctx("keyPairName")
+   subnetId: ctx("subnetId")
 });
