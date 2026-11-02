@@ -1,3 +1,5 @@
+const { describe, test, expect } = require('bun:test');
+
 // This test guards the rule: never treat the local player's websocket messages
 // (init/players/join/update/rename) as remote player events.
 

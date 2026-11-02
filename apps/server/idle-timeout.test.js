@@ -1,4 +1,6 @@
+const { describe, it, expect, beforeAll, afterAll, setDefaultTimeout } = require("bun:test");
 const { spawn } = require("child_process");
+const path = require("path");
 const WebSocket = require("ws");
 
 function waitForMessage(ws, predicate, timeoutMs = 2000) {
@@ -24,14 +26,14 @@ function delay(ms) {
 const PORT = 19081;
 const SERVER_URL = `ws://localhost:${PORT}`;
 
-// Increase overall Jest timeout for this suite to allow for process startup and async WebSocket flow
-jest.setTimeout(15000);
+// Allow time for process startup and the async WebSocket flow
+setDefaultTimeout(15000);
 
 describe("server idle timeout (message mode)", () => {
 	let serverProc;
 
     beforeAll(async () => {
-		serverProc = spawn("node", ["apps/server/server.js"], {
+		serverProc = spawn(process.execPath, [path.join(__dirname, "server.js")], {
 			cwd: process.cwd(),
 			env: {
 				...process.env,

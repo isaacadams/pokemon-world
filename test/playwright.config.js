@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
-   testDir: "./",
+   testDir: "./playwright",
    timeout: 30000,
    use: {
       headless: true, // Run in headless mode for CI, set to false for debugging
@@ -11,7 +11,7 @@ export default defineConfig({
    },
    webServer: {
       cwd: "../",
-      command: "npm run dev",
+      command: "bun apps/client/scripts/dev.ts",
       url: "http://localhost:9000",
       timeout: 120000,
       reuseExistingServer: !process.env.CI

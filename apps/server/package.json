@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"No tests in server; skipping.\" && exit 0"
+    "start": "bun server.js",
+    "test": "bun test"
   },
   "keywords": [],
   "author": "Isaac Adams",

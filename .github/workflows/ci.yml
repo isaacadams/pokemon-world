@@ -5,25 +5,28 @@ on:
     branches: [main]
 
 jobs:
-  server-unit-tests:
+  unit-tests:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: Enable corepack
-        run: corepack enable
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Install dependencies (workspace)
-        run: pnpm install --frozen-lockfile=false
+      - name: Run unit tests (bun test)
+        run: bun run test
 
-      - name: Run server unit tests (Jest)
-        run: pnpm -w exec jest apps/server --runInBand
+      - name: Build client
+        run: bun run --filter @pokemon-world/game build
+
+      - name: Synthesize infrastructure (CDK)
+        run: bun run --filter @repo/infra synth
+        env:
+          CDK_DEFAULT_ACCOUNT: "000000000000"
 
   dst-playwright-tests:
     runs-on: ubuntu-latest
@@ -31,22 +34,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: Enable corepack
-        run: corepack enable
-
-      - name: Install dependencies (workspace)
-        run: pnpm install --frozen-lockfile=false
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm -F @repo/dst exec playwright install --with-deps
+        working-directory: packages/dst
+        run: bunx playwright install --with-deps
 
       - name: Run DST headless Playwright tests
-        run: pnpm -F @repo/dst test
+        run: bun run test:dst
 
   e2e-playwright-tests:
     runs-on: ubuntu-latest
@@ -54,24 +53,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
-      - name: Enable corepack
-        run: corepack enable
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Install dependencies (workspace)
-        run: pnpm install --frozen-lockfile=false
-
-      - name: Install e2e test deps and Playwright browsers
-        run: |
-          cd test
-          pnpm install --frozen-lockfile=false
-          ./node_modules/.bin/playwright install --with-deps
+      - name: Install Playwright browsers
+        working-directory: test
+        run: bunx playwright install --with-deps
 
       - name: Run root E2E Playwright tests
-        run: |
-          cd test
-          ./node_modules/.bin/playwright test
+        run: bun run test:e2e

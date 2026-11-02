@@ -6,20 +6,20 @@ def main [] {
     } catch {}
 
     # start auth server
-    pnpm i
-    tmux new-session -d -s auth "cd apps/auth && node server.js"
+    bun install
+    tmux new-session -d -s auth "cd apps/auth && bun server.js"
     # start websocket server
-    tmux new-session -d -s wss "cd apps/server && node server.js"
+    tmux new-session -d -s wss "cd apps/server && bun server.js"
     # start client
-    tmux new-session -d -s client "cd apps/client && npm run dev"
+    tmux new-session -d -s client "cd apps/client && bun run dev"
 }
 
 def "main deploy" [] {
-    sam deploy
+    cd infra; bunx cdk deploy
 }
 
 def "main upload client" [] {
-    pnpm -F @pokemon-world/game build
+    bun run --filter @pokemon-world/game build
     aws s3 sync apps/client/dist/ s3://my-game-client-dev-389616631340/
 }
 
@@ -42,8 +42,8 @@ def "main upload server" [name: string] {
 }
 
 def "main env" [] {
-    let outputs = sam list stack-outputs --stack-name pokemon-world --output json --region us-east-1 
-        | from json 
+    let outputs = aws cloudformation describe-stacks --stack-name pokemon-world --region us-east-1 --query "Stacks[0].Outputs" --output json
+        | from json
         | select OutputKey OutputValue 
         | transpose -r 
         | into record
@@ -53,8 +53,8 @@ def "main env" [] {
 }
 
 def "main resources" [] {
-    let outputs = sam list resources --stack-name pokemon-world --output json --region us-east-1 
-        | from json 
+    let outputs = aws cloudformation list-stack-resources --stack-name pokemon-world --region us-east-1 --query "StackResourceSummaries" --output json
+        | from json
         | select LogicalResourceId PhysicalResourceId 
         | update LogicalResourceId { |r| $r.LogicalResourceId | str snake-case }
         | transpose -r 

@@ -4,33 +4,27 @@
    "description": "A Pokemon exploration web app using PixiJS",
    "author": "Isaac Adams",
    "license": "ISC",
-   "packageManager": "pnpm@10.6.5+sha512.cdf928fca20832cd59ec53826492b7dc25dc524d4370b6b4adbf65803d32efaa6c1c88147c0ae4e8d579a6c9eec715757b50d4fa35eea179d868eada4ed043af",
+   "packageManager": "bun@1.4.4",
+   "workspaces": ["apps/*", "packages/*", "infra", "test"],
    "scripts": {
-      "fresh-install": "find . -name 'node_modules' -type d -exec rm -rf {} + && rm pnpm-lock.yaml && pnpm install",
-      "clean": "turbo run clean",
-      "build": "turbo run build",
-      "test": "turbo run test",
-      "format": "prettier -w **/*.{ts,js}",
-      "start:dst": "ts-node -r tsconfig-paths/register src/dst/index.ts",
-      "start:dev": "node packages/dst/scripts/run-scenario.js -- --client --devmode --duration 86400",
-      "start:game": "pnpm -F @pokemon-world/game dev"
+      "fresh-install": "find . -name node_modules -type d -prune -exec rm -rf {} + && rm -f bun.lock && bun install",
+      "build": "bun run --filter '*' build",
+      "typecheck": "bun run --filter '*' typecheck",
+      "test": "bun test ./apps ./infra ./test/unit",
+      "test:dst": "bun run --filter @repo/dst test",
+      "test:e2e": "bun run --filter @repo/e2e test",
+      "format": "prettier -w '**/*.{ts,js}'",
+      "dev": "bun run --filter @pokemon-world/game dev",
+      "start:dev": "bun packages/dst/scripts/run-scenario.js --client --devmode --duration 86400",
+      "deploy": "bun run --filter @repo/infra deploy"
    },
    "devDependencies": {
-      "@types/jest": "29.5.14",
-      "@types/node": "^22.13.10",
-      "assert": "^2.0.0",
-      "jest": "^29.7.0",
-      "path-browserify": "^1.0.0",
-      "pixi.js": "7.4.0",
+      "@types/bun": "^1.2.0",
       "prettier": "^3.5.3",
-      "process": "^0.11.10",
-      "turbo": "^2.4.4",
       "typescript": "^5.8.2"
    },
-   "pnpm": {
-      "overrides": {
-         "pixi.js": "7.4.0",
-         "zod": "3.24.2"
-      }
+   "overrides": {
+      "pixi.js": "7.4.0",
+      "zod": "3.24.2"
    }
 }

@@ -1,6 +1,6 @@
-const { shouldIdle } = require('../apps/client/dist/placeholder');
+const { describe, test, expect } = require('bun:test');
 
-// We can't import TS directly here without ts-jest; instead, we reimplement the invariant equivalent
+// Reimplements the invariant equivalent
 function shouldIdleLocal(lastUpdateMs, nowMs, thresholdMs) {
   return nowMs - lastUpdateMs >= thresholdMs;
 }

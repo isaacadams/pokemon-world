@@ -1,0 +1,19 @@
+FROM oven/bun:1.4
+WORKDIR /app
+
+# Copy workspace manifests and lockfile first for install caching
+COPY package.json bun.lock ./
+COPY apps/auth/package.json apps/auth/
+COPY apps/client/package.json apps/client/
+COPY apps/server/package.json apps/server/
+COPY packages/core/package.json packages/core/
+COPY packages/dst/package.json packages/dst/
+COPY infra/package.json infra/
+COPY test/package.json test/
+RUN bun install --frozen-lockfile
+
+RUN cd packages/dst && bunx playwright install --with-deps chromium
+
+COPY . .
+
+CMD ["bun", "run", "--filter", "@repo/dst", "test", "--project=chromium"]

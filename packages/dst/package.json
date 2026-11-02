@@ -1,8 +1,10 @@
 {
    "name": "@repo/dst",
+   "private": true,
    "scripts": {
       "test": "playwright test",
-      "snapshots": "npx playwright test --update-snapshots"
+      "snapshots": "playwright test --update-snapshots",
+      "scenario": "bun scripts/run-scenario.js"
    },
    "dependencies": {
       "@repo/core": "workspace:*",
@@ -10,7 +12,6 @@
    },
    "devDependencies": {
       "@playwright/test": "^1.51.0",
-      "@types/node": "^22.13.10",
       "@types/seedrandom": "^3.0.8"
    }
 }

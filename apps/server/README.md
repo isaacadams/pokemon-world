@@ -3,9 +3,13 @@
 
 Start:
 ```bash
-node apps/server/server.js
+bun apps/server/server.js
+```
+
+Test:
+```bash
+bun test apps/server
 ```
 
 See also:
 - DST docs: packages/dst/README.md
-
